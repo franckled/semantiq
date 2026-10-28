@@ -150,12 +150,14 @@ def create_certificate(key):
 
 
 def find_or_create_profile(bundle_rid, cert_id):
-    q = urllib.parse.urlencode({'filter[name]': PROFILE_NAME})
+    q = urllib.parse.urlencode({'filter[name]': PROFILE_NAME,
+                                'include': 'bundleId'})
     for p in call('GET', f'/profiles?{q}')['data']:
         a = p['attributes']
         # Ne jamais toucher au profil d'une autre app du même compte.
-        bid = call('GET', f'/profiles/{p["id"]}/bundleId')['data']
-        if bid['id'] != bundle_rid:
+        rel = (p.get('relationships', {}).get('bundleId', {})
+               .get('data') or {})
+        if rel.get('id') != bundle_rid:
             continue
         certs = [c['id'] for c in call('GET', f'/profiles/{p["id"]}/certificates')['data']]
         if (a.get('profileState') == 'ACTIVE' and cert_id in certs
