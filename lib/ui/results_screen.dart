@@ -12,6 +12,10 @@ import 'common.dart';
 import 'network_view.dart';
 import 'results_tabs.dart';
 
+/// Lance [analyze] dans un isolat séparé, sans rien capturer de l'interface.
+Future<Analysis> _runAnalysis(String text, AnalysisOptions options) =>
+    Isolate.run(() => analyze(text, options));
+
 /// Résultats de l'analyse d'un entretien, en cinq onglets.
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key, required this.interview});
@@ -57,7 +61,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
     try {
       // Calcul hors du fil de l'interface : un entretien d'une heure
       // compte plusieurs centaines de phrases.
-      final a = await Isolate.run(() => analyze(text, options));
+      // La fonction lancée dans l'isolat doit être de premier niveau :
+      // une fermeture créée ici emporterait l'état de l'écran (contexte,
+      // widgets), que Dart refuse d'envoyer à un autre isolat.
+      final a = await _runAnalysis(text, options);
       if (mounted) setState(() => _analysis = a);
     } catch (e) {
       if (mounted) setState(() => _error = e);
