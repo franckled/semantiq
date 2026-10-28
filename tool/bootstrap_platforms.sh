@@ -26,6 +26,8 @@ GRADLE=android/app/build.gradle.kts
 sed -i.bak -E "s/applicationId[ =]+\"[^\"]+\"/applicationId = \"$APP_ID\"/" "$GRADLE"
 sed -i.bak -E "s/namespace[ =]+\"[^\"]+\"/namespace = \"$APP_ID\"/" "$GRADLE"
 sed -i.bak -E "s/minSdk[ =]+flutter\.minSdkVersion/minSdk = 24/; s/minSdkVersion[ =]+flutter\.minSdkVersion/minSdkVersion 24/" "$GRADLE"
+# NDK exigé par le module Whisper (whisper_ggml).
+sed -i.bak -E 's/ndkVersion[ =]+flutter\.ndkVersion/ndkVersion = "29.0.13113456"/' "$GRADLE"
 if [[ $GRADLE == *.gradle ]]; then
   # Syntaxe Groovy : pas de signe égal.
   sed -i.bak -E "s/applicationId = \"/applicationId \"/; s/namespace = \"/namespace \"/" "$GRADLE"
