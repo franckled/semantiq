@@ -13,13 +13,15 @@ name: TestFlight
 #   ASC_ISSUER_ID   Issuer ID affiché au-dessus de la liste des clés
 #   ASC_KEY_P8      contenu complet du fichier AuthKey_XXXX.p8
 #
-# Lancement : onglet Actions › TestFlight › Run workflow, ou en poussant un tag
-# de la forme v1.2.3.
+# Lancement : onglet Actions › TestFlight › Run workflow, en poussant un tag
+# de la forme v1.2.3, ou en poussant sur la branche testflight.
 
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+    # Envoyer main sur la branche « testflight » lance aussi un envoi.
+    branches: [testflight]
 
 concurrency:
   group: testflight
