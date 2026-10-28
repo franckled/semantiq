@@ -77,7 +77,7 @@ def env_out(**kv):
                 f.write(f'{k}={v}\n')
 
 
-PROFILE_NAME = 'CliniFlow CI AppStore'
+PROFILE_NAME = 'SemantiQ CI AppStore'
 
 
 def _aes() -> AESGCM:
@@ -153,6 +153,10 @@ def find_or_create_profile(bundle_rid, cert_id):
     q = urllib.parse.urlencode({'filter[name]': PROFILE_NAME})
     for p in call('GET', f'/profiles?{q}')['data']:
         a = p['attributes']
+        # Ne jamais toucher au profil d'une autre app du même compte.
+        bid = call('GET', f'/profiles/{p["id"]}/bundleId')['data']
+        if bid['id'] != bundle_rid:
+            continue
         certs = [c['id'] for c in call('GET', f'/profiles/{p["id"]}/certificates')['data']]
         if (a.get('profileState') == 'ACTIVE' and cert_id in certs
                 and _valid_until(a['expirationDate'], 14)):
