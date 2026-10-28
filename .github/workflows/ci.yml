@@ -1,0 +1,99 @@
+name: CI
+
+# Analyse, tests, puis compilation Android (APK) et iOS (sans signature).
+# En cas d'échec, les journaux sont déposés dans la branche ci-logs pour
+# pouvoir être lus hors de GitHub.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Analyse et tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Analyse et tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          set -o pipefail
+          flutter --version | tee "$RUNNER_TEMP/logs/flutter.log"
+          flutter pub get 2>&1 | tee "$RUNNER_TEMP/logs/pub.log"
+          flutter analyze 2>&1 | tee "$RUNNER_TEMP/logs/analyze.log"
+          flutter test 2>&1 | tee "$RUNNER_TEMP/logs/test.log"
+      - name: Publier les journaux d'échec
+        if: failure()
+        run: bash tool/push_logs.sh test "${{ github.token }}" "${{ github.repository }}"
+
+  android:
+    name: Build Android
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compiler l'APK
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          set -o pipefail
+          bash tool/bootstrap_platforms.sh 2>&1 | tee "$RUNNER_TEMP/logs/bootstrap.log"
+          flutter pub get
+          dart run flutter_launcher_icons
+          flutter build apk --release 2>&1 | tail -n 400 | tee "$RUNNER_TEMP/logs/build.log"
+          test -f build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v5
+        with:
+          name: semantiq-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+      - name: Publier les journaux d'échec
+        if: failure()
+        run: bash tool/push_logs.sh android "${{ github.token }}" "${{ github.repository }}"
+
+  ios:
+    name: Build iOS (sans signature)
+    needs: test
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Compiler pour iPhone
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          set -o pipefail
+          bash tool/bootstrap_platforms.sh 2>&1 | tee "$RUNNER_TEMP/logs/bootstrap.log"
+          flutter pub get
+          dart run flutter_launcher_icons
+          bash tool/check_ios_icon.sh
+          flutter build ios --release --no-codesign 2>&1 | tail -n 400 | tee "$RUNNER_TEMP/logs/build.log"
+          test -d build/ios/iphoneos/Runner.app
+      - name: Publier les journaux d'échec
+        if: failure()
+        run: bash tool/push_logs.sh ios "${{ github.token }}" "${{ github.repository }}"

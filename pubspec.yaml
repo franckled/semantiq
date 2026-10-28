@@ -1,0 +1,56 @@
+name: semantiq
+description: >-
+  SemantiQ – analyser les verbatims d'entretiens de thèse : transcription,
+  résumé, fréquences, phrases clés et cooccurrences.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  ffmpeg_kit_flutter_new_min: ^2.1.0
+  file_picker: ^13.3.0
+  flutter_secure_storage: ^11.0.0
+  http: ^1.5.0
+  path_provider: ^2.1.5
+  share_plus: ^13.0.0
+  shared_preferences: ^2.5.0
+  url_launcher: ^6.3.0
+  wakelock_plus: ^1.3.0
+  whisper_ggml: ^2.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/icon.png
+  fonts:
+    - family: Atkinson
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-400.ttf
+          weight: 400
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-500.ttf
+          weight: 500
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-700.ttf
+          weight: 700
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-800.ttf
+          weight: 800
+
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  adaptive_icon_background: "#231F45"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
