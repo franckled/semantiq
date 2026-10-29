@@ -46,11 +46,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/AtkinsonHyperlegibleNext-800.ttf
           weight: 800
+    - family: DMSerif
+      fonts:
+        - asset: assets/fonts/DMSerifDisplay-Regular.ttf
+        - asset: assets/fonts/DMSerifDisplay-Italic.ttf
+          style: italic
 
 flutter_launcher_icons:
   image_path: assets/icon/icon.png
   android: true
   ios: true
   remove_alpha_ios: true
-  adaptive_icon_background: "#231F45"
+  adaptive_icon_background: "#6C4DF6"
   adaptive_icon_foreground: assets/icon/icon_foreground.png

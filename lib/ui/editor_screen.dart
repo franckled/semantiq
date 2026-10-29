@@ -7,6 +7,8 @@ import '../data/interview.dart';
 import '../engine/transcript.dart';
 import 'app_scope.dart';
 import 'common.dart';
+import 'illustrations.dart';
+import 'motion.dart';
 import 'results_screen.dart';
 import 'theme.dart';
 
@@ -40,11 +42,15 @@ class _EditorScreenState extends State<EditorScreen> {
   late bool _showTips = widget.justTranscribed;
   late InterviewStore _store;
 
+  /// Entretien supprimé depuis cet écran : ne plus rien enregistrer.
+  bool _deleted = false;
+
   Interview get _it => widget.interview;
 
   @override
   void initState() {
     super.initState();
+    _savedText = widget.interview.text;
     _text.addListener(_scheduleSave);
   }
 
@@ -64,13 +70,19 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _scheduleSave() {
+    // Le texte en mémoire suit la frappe ; seule l'écriture sur disque est
+    // différée.
+    _it.text = _text.text;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(milliseconds: 700), _saveNow);
   }
 
+  String? _savedText;
+
   void _saveNow() {
-    if (_it.text == _text.text) return;
+    if (_deleted || _savedText == _text.text) return;
     _it.text = _text.text;
+    _savedText = _text.text;
     _store.save(_it);
   }
 
@@ -79,87 +91,168 @@ class _EditorScreenState extends State<EditorScreen> {
     final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
     final empty = _text.text.trim().isEmpty;
+    final accent = Accent.forKey(_it.id);
 
     return Scaffold(
       appBar: AppBar(
+        titleSpacing: 4,
         title: GestureDetector(
           onTap: _rename,
-          child: Text(_it.title, overflow: TextOverflow.ellipsis),
+          child: Row(
+            children: [
+              InterviewAvatar(accent: accent, size: 34),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(_it.title, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
             tooltip: 'Pseudonymiser',
-            icon: const Icon(Icons.visibility_off_outlined),
+            icon: const Icon(Icons.visibility_off_rounded),
             onPressed: _pseudonymize,
           ),
-          PopupMenuButton<String>(
-            onSelected: (v) => switch (v) {
-              'rename' => _rename(),
-              'speakers' => _renameSpeakers(),
-              'variables' => _editVariables(),
-              'share' => shareTextFile(context,
-                  fileName: '${fileSlug(_it.title)}.txt',
-                  content: _text.text),
-              _ => null,
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('Renommer')),
-              PopupMenuItem(
-                  value: 'speakers', child: Text('Renommer les locuteurs')),
-              PopupMenuItem(
-                  value: 'variables',
-                  child: Text('Variables (IRaMuTeQ)')),
-              PopupMenuItem(value: 'share', child: Text('Partager le texte')),
-            ],
+          IconButton(
+            tooltip: 'Plus',
+            icon: const Icon(Icons.more_horiz_rounded),
+            onPressed: _menu,
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (_showTips)
-              _Tips(onClose: () => setState(() => _showTips = false)),
-            if (empty && widget.pasteOnOpen)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: OutlinedButton.icon(
-                  onPressed: _paste,
-                  icon: const Icon(Icons.content_paste),
-                  label: const Text('Coller la retranscription'),
-                ),
+      body: Backdrop(
+        variant: 1,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: appCurve,
+                child: _showTips
+                    ? _Tips(onClose: () => setState(() => _showTips = false))
+                    : const SizedBox(width: double.infinity),
               ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: TextField(
-                  controller: _text,
-                  focusNode: _focus,
-                  maxLines: null,
-                  expands: true,
-                  keyboardType: TextInputType.multiline,
-                  textAlignVertical: TextAlignVertical.top,
-                  style: t.bodyLarge,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'E : Pouvez-vous me parler de…\n'
-                        'P1 : Alors, au début…\n\n'
-                        'Indiquez les locuteurs en début de ligne '
-                        '(E pour l\'enquêteur) : leurs propos seront '
-                        'distingués dans l\'analyse.',
-                    hintMaxLines: 8,
-                    hintStyle: t.bodyLarge?.copyWith(color: tones.muted),
+              if (empty && widget.pasteOnOpen)
+                FadeSlideIn(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: GradientButton(
+                      label: 'Coller la retranscription',
+                      icon: Icons.content_paste_rounded,
+                      colors: const [Palette.violet, Color(0xFF9B7BFF)],
+                      onPressed: _paste,
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: tones.raised,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: tones.rule),
+                    ),
+                    child: TextField(
+                      controller: _text,
+                      focusNode: _focus,
+                      maxLines: null,
+                      expands: true,
+                      keyboardType: TextInputType.multiline,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: t.bodyLarge,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(18),
+                        hintText: 'E : Pouvez-vous me parler de…\n'
+                            'P1 : Alors, au début…\n\n'
+                            'Indiquez les locuteurs en début de ligne '
+                            '(E pour l\'enquêteur) : leurs propos seront '
+                            'distingués dans l\'analyse.',
+                        hintMaxLines: 8,
+                        hintStyle: t.bodyLarge?.copyWith(color: tones.muted),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            _BottomBar(
-              onSpeaker: _insertSpeaker,
-              onAnalyze: empty ? null : _analyze,
-            ),
-          ],
+              _BottomBar(
+                onSpeaker: _insertSpeaker,
+                onAnalyze: empty ? null : _analyze,
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _menu() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) {
+        Widget item(String value, IconData icon, String label, Accent accent,
+                {bool danger = false}) =>
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: IconBadge(icon, accent: accent),
+              title: Text(
+                label,
+                style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                      color: danger ? Tones.of(ctx).danger : null,
+                    ),
+              ),
+              onTap: () => Navigator.pop(ctx, value),
+            );
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              item('rename', Icons.edit_rounded, 'Renommer', Accent.sky),
+              item('speakers', Icons.groups_rounded, 'Renommer les locuteurs',
+                  Accent.mint),
+              item('variables', Icons.label_rounded, 'Variables (IRaMuTeQ)',
+                  Accent.sun),
+              item('share', Icons.ios_share_rounded, 'Partager le texte',
+                  Accent.violet),
+              item('delete', Icons.delete_outline_rounded,
+                  'Supprimer l\'entretien', Accent.coral,
+                  danger: true),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case 'rename':
+        await _rename();
+      case 'speakers':
+        await _renameSpeakers();
+      case 'variables':
+        await _editVariables();
+      case 'share':
+        await shareTextFile(context,
+            fileName: '${fileSlug(_it.title)}.txt', content: _text.text);
+      case 'delete':
+        _saveTimer?.cancel();
+        final title = _it.title;
+        if (await confirmDeleteInterview(context, _it) && mounted) {
+          _deleted = true;
+          final messenger = ScaffoldMessenger.of(context);
+          Navigator.pop(context);
+          messenger.showSnackBar(
+              SnackBar(content: Text('« $title » supprimé.')));
+        }
+    }
   }
 
   Future<void> _paste() async {
@@ -205,30 +298,8 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _rename() async {
-    final c = TextEditingController(text: _it.title);
-    final title = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Titre de l\'entretien'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, c.text),
-              child: const Text('OK')),
-        ],
-      ),
-    );
-    if (title == null || title.trim().isEmpty || !mounted) return;
-    setState(() => _it.title = title.trim());
-    await AppScope.of(context).store.save(_it);
+    await renameInterview(context, _it);
+    if (mounted) setState(() {});
   }
 
   Future<void> _renameSpeakers() async {
@@ -415,32 +486,35 @@ class _Tips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tones = Tones.of(context);
     final t = Theme.of(context).textTheme;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
-      decoration: BoxDecoration(
-        color: tones.markerSoft,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              'Relisez la transcription avant de l\'analyser : corrigez les '
-              'mots mal reconnus, marquez les locuteurs avec les boutons E et '
-              'P1, et pseudonymisez les noms propres.',
-              style: t.bodyMedium?.copyWith(color: tones.onMarker),
+    final fg = Accent.sun.onSoft(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: TintCard(
+        accent: Accent.sun,
+        padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 10),
+              child: Icon(Icons.tips_and_updates_rounded, color: fg),
             ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: onClose,
-            icon: Icon(Icons.close, color: tones.onMarker),
-          ),
-        ],
+            Expanded(
+              child: Text(
+                'Relisez la transcription avant de l\'analyser : corrigez les '
+                'mots mal reconnus, marquez les locuteurs avec les boutons E '
+                'et P1, et pseudonymisez les noms propres.',
+                style: t.bodyMedium?.copyWith(color: fg),
+              ),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: onClose,
+              icon: Icon(Icons.close_rounded, color: fg),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -454,28 +528,48 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      child: Row(
-        children: [
-          for (final l in const ['E', 'P1', 'P2'])
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+    final scheme = Theme.of(context).colorScheme;
+    final tones = Tones.of(context);
+    Widget speaker(String label, Color bg, Color fg) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Pressable(
+            onTap: () => onSpeaker(label),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              height: 56,
+              constraints: const BoxConstraints(minWidth: 50),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '$label :',
+                style: TextStyle(
+                  fontFamily: fontFamily,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: fg,
                 ),
-                onPressed: () => onSpeaker(l),
-                child: Text('$l :'),
               ),
             ),
-          const SizedBox(width: 4),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Row(
+        children: [
+          speaker('E', scheme.surfaceContainerHighest, tones.muted),
+          speaker('P1', Accent.forKey('P1').soft(context),
+              Accent.forKey('P1').onSoft(context)),
+          speaker('P2', Accent.forKey('P2').soft(context),
+              Accent.forKey('P2').onSoft(context)),
           Expanded(
-            child: FilledButton.icon(
+            child: GradientButton(
+              label: 'Analyser',
+              icon: Icons.auto_graph_rounded,
               onPressed: onAnalyze,
-              icon: const Icon(Icons.insights),
-              label: const Text('Analyser'),
             ),
           ),
         ],

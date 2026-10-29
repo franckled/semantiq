@@ -9,8 +9,10 @@ import '../services/ai_summary.dart';
 import '../services/settings.dart';
 import 'app_scope.dart';
 import 'common.dart';
+import 'illustrations.dart';
 import 'network_view.dart';
 import 'results_tabs.dart';
+import 'theme.dart';
 
 /// Lance [analyze] dans un isolat séparé, sans rien capturer de l'interface.
 Future<Analysis> _runAnalysis(String text, AnalysisOptions options) =>
@@ -75,64 +77,63 @@ class _ResultsScreenState extends State<ResultsScreen> {
   Widget build(BuildContext context) {
     final a = _analysis;
     return DefaultTabController(
-      length: 5,
+      length: sections.length,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_it.title, overflow: TextOverflow.ellipsis),
           actions: [
             IconButton(
               tooltip: 'Options d\'analyse',
-              icon: const Icon(Icons.tune),
+              icon: const Icon(Icons.tune_rounded),
               onPressed: a == null ? null : _showOptions,
             ),
             Builder(
               builder: (btnContext) => IconButton(
                 tooltip: 'Exporter',
-                icon: const Icon(Icons.ios_share),
+                icon: const Icon(Icons.ios_share_rounded),
                 onPressed: a == null ? null : () => _export(btnContext, a),
               ),
             ),
+            const SizedBox(width: 4),
           ],
-          bottom: const TabBar(
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Résumé'),
-              Tab(text: 'Phrases clés'),
-              Tab(text: 'Mots'),
-              Tab(text: 'Corrélations'),
-              Tab(text: 'Texte'),
-            ],
+          bottom: const SectionTabBar(),
+        ),
+        body: Backdrop(
+          variant: 2,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: _error != null
+                ? EmptyState(
+                    key: const ValueKey('error'),
+                    title: 'Analyse impossible',
+                    message: '$_error',
+                    accent: Accent.coral,
+                  )
+                : a == null
+                    ? const _Loading(key: ValueKey('loading'))
+                    : TabBarView(
+                        key: ValueKey(a),
+                        children: [
+                          SummaryTab(
+                            analysis: a,
+                            interview: _it,
+                            aiRunning: _aiRunning,
+                            onGenerateAi: _generateAi,
+                          ),
+                          KeySentencesTab(analysis: a, interview: _it),
+                          WordsTab(
+                            analysis: a,
+                            onWordTap: (w) => _openWord(a, w.key),
+                          ),
+                          NetworkTab(
+                            analysis: a,
+                            onWordTap: (key) => _openWord(a, key),
+                          ),
+                          TextTab(analysis: a),
+                        ],
+                      ),
           ),
         ),
-        body: _error != null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text('Analyse impossible : $_error'),
-                ),
-              )
-            : a == null
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    children: [
-                      SummaryTab(
-                        analysis: a,
-                        interview: _it,
-                        aiRunning: _aiRunning,
-                        onGenerateAi: _generateAi,
-                      ),
-                      KeySentencesTab(analysis: a, interview: _it),
-                      WordsTab(
-                        analysis: a,
-                        onWordTap: (w) => _openWord(a, w.key),
-                      ),
-                      NetworkTab(
-                        analysis: a,
-                        onWordTap: (key) => _openWord(a, key),
-                      ),
-                      TextTab(analysis: a),
-                    ],
-                  ),
       ),
     );
   }
@@ -141,7 +142,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       builder: (_) => WordSheet(
         analysis: a,
         wordKey: key,
@@ -189,7 +189,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text('Options d\'analyse',
-                  style: Theme.of(ctx).textTheme.titleLarge),
+                  style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -218,9 +218,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              FilledButton(
+              GradientButton(
+                label: 'Relancer l\'analyse',
+                icon: Icons.refresh_rounded,
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Relancer l\'analyse'),
               ),
             ],
           ),
@@ -237,33 +238,37 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final settings = AppScope.of(context).settings;
     final choice = await showModalBottomSheet<String>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      builder: (ctx) {
+        Widget item(String value, IconData icon, String title, String sub,
+                Accent accent) =>
             ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Rapport complet'),
-              subtitle: const Text('Markdown : Word, Pages, Notion…'),
-              onTap: () => Navigator.pop(ctx, 'md'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.table_chart_outlined),
-              title: const Text('Tableau des fréquences'),
-              subtitle: const Text('CSV pour Excel'),
-              onTap: () => Navigator.pop(ctx, 'csv'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.hub_outlined),
-              title: const Text('Corpus IRaMuTeQ'),
-              subtitle: const Text('Cet entretien seul'),
-              onTap: () => Navigator.pop(ctx, 'ira'),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: IconBadge(icon, accent: accent, size: 44),
+              title: Text(title, style: Theme.of(ctx).textTheme.titleSmall),
+              subtitle: Text(sub),
+              onTap: () => Navigator.pop(ctx, value),
+            );
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text('Exporter',
+                    style: Theme.of(ctx).textTheme.headlineSmall),
+              ),
+              item('md', Icons.description_rounded, 'Rapport complet',
+                  'Markdown : Word, Pages, Notion…', Accent.violet),
+              item('csv', Icons.table_chart_rounded, 'Tableau des fréquences',
+                  'CSV pour Excel', Accent.mint),
+              item('ira', Icons.hub_rounded, 'Corpus IRaMuTeQ',
+                  'Cet entretien seul', Accent.coral),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
     if (choice == null || !btnContext.mounted) return;
     final slug = fileSlug(_it.title);
@@ -323,5 +328,24 @@ class _ResultsScreenState extends State<ResultsScreen> {
     } finally {
       if (mounted) setState(() => _aiRunning = false);
     }
+  }
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListeningArt(size: 150),
+          const SizedBox(height: 12),
+          Text('Analyse en cours…',
+              style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
   }
 }

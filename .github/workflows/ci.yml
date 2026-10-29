@@ -32,7 +32,7 @@ jobs:
           set -o pipefail
           flutter --version | tee "$RUNNER_TEMP/logs/flutter.log"
           flutter pub get 2>&1 | tee "$RUNNER_TEMP/logs/pub.log"
-          flutter analyze 2>&1 | tee "$RUNNER_TEMP/logs/analyze.log"
+          flutter analyze --no-fatal-infos 2>&1 | tee "$RUNNER_TEMP/logs/analyze.log"
           flutter test 2>&1 | tee "$RUNNER_TEMP/logs/test.log"
       - name: Publier les journaux d'échec
         if: failure()

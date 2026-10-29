@@ -7,6 +7,8 @@ import '../sample_interview.dart';
 import 'app_scope.dart';
 import 'common.dart';
 import 'editor_screen.dart';
+import 'illustrations.dart';
+import 'motion.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 import 'transcribe_screen.dart';
@@ -16,113 +18,89 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scope = AppScope.of(context);
-    final store = scope.store;
-    final t = Theme.of(context).textTheme;
-    final tones = Tones.of(context);
-
+    final store = AppScope.of(context).store;
     return Scaffold(
-      appBar: AppBar(
-        title: const _Wordmark(),
-        actions: [
-          IconButton(
-            tooltip: 'Exporter le corpus pour IRaMuTeQ',
-            icon: const Icon(Icons.ios_share),
-            onPressed: () => _exportCorpus(context),
-          ),
-          IconButton(
-            tooltip: 'Réglages',
-            icon: const Icon(Icons.tune),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _newInterview(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvel entretien'),
-      ),
-      body: ListenableBuilder(
-        listenable: store,
-        builder: (context, _) {
-          final items = store.items;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-            children: [
-              if (items.isEmpty) ...[
-                const SizedBox(height: 24),
-                Text('Vos entretiens, mot à mot.', style: t.headlineSmall),
-                const SizedBox(height: 12),
-                Text(
-                  'Importez un enregistrement ou collez une retranscription : '
-                  'SemantiQ en tire le texte, un résumé, les mots les plus '
-                  'fréquents, les phrases clés et les mots qui vont ensemble.',
-                  style: t.bodyLarge?.copyWith(color: tones.muted),
-                ),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  onPressed: () => _openSample(context),
-                  icon: const Icon(Icons.auto_stories_outlined),
-                  label: const Text('Ouvrir un entretien d\'exemple'),
-                ),
-              ] else ...[
-                SectionTitle('Entretiens',
-                    subtitle: '${items.length} enregistré'
-                        '${items.length > 1 ? 's' : ''} sur cet appareil'),
-                for (final it in items)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _InterviewCard(interview: it),
+      body: Backdrop(
+        child: SafeArea(
+          bottom: false,
+          child: ListenableBuilder(
+            listenable: store,
+            builder: (context, _) {
+              final items = store.items;
+              return CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    sliver: SliverList.list(
+                      children: [
+                        _TopBar(onExport: () => _exportCorpus(context)),
+                        const SizedBox(height: 22),
+                        _Hero(items: items),
+                        const SizedBox(height: 24),
+                        _ActionTiles(
+                          onAudio: () => _importAudio(context),
+                          onPaste: () => _pasteText(context),
+                        ),
+                        if (items.isEmpty) ...[
+                          const SizedBox(height: 14),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 260),
+                            child: _SampleTile(
+                                onTap: () => _openSample(context)),
+                          ),
+                        ],
+                        if (items.isNotEmpty)
+                          SectionTitle(
+                            'Mes entretiens',
+                            subtitle: 'Balayez vers la gauche pour supprimer',
+                            trailing: _CountPill(items.length),
+                          ),
+                      ],
+                    ),
                   ),
-              ],
-              const CreditLine(),
-            ],
-          );
-        },
+                  if (items.isNotEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList.builder(
+                        itemCount: items.length,
+                        itemBuilder: (context, i) => FadeSlideIn.indexed(
+                          i,
+                          key: ValueKey(items[i].id),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _InterviewCard(interview: items[i]),
+                          ),
+                        ),
+                      ),
+                    ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                        20, 0, 20, 24 + MediaQuery.paddingOf(context).bottom),
+                    sliver: const SliverToBoxAdapter(child: CreditLine()),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
 
-  Future<void> _newInterview(BuildContext context) async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.graphic_eq),
-              title: const Text('Importer un enregistrement'),
-              subtitle: const Text('Mémo vocal, dictaphone : m4a, mp3, wav…'),
-              onTap: () => Navigator.pop(ctx, 'audio'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.content_paste),
-              title: const Text('Coller une retranscription'),
-              subtitle: const Text('Texte déjà transcrit'),
-              onTap: () => Navigator.pop(ctx, 'text'),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+  Future<void> _pasteText(BuildContext context) async {
+    final store = AppScope.of(context).store;
+    final it = store.create(
+        title: store.nextTitle(), text: '', source: 'Texte collé');
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+          builder: (_) => EditorScreen(interview: it, pasteOnOpen: true)),
     );
-    if (!context.mounted || choice == null) return;
-    if (choice == 'text') {
-      final store = AppScope.of(context).store;
-      final it = store.create(title: store.nextTitle(), text: '',
-          source: 'Texte collé');
-      await Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-            builder: (_) => EditorScreen(interview: it, pasteOnOpen: true)),
-      );
-    } else {
-      await _importAudio(context);
+    // Entretien laissé vide : on ne le garde pas.
+    if (it.text.trim().isEmpty && context.mounted) {
+      await AppScope.of(context).store.delete(it);
     }
   }
 
@@ -192,26 +170,285 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _Wordmark extends StatelessWidget {
-  const _Wordmark();
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.onExport});
+
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Wordmark(size: 32)),
+        RoundIconButton(
+          tooltip: 'Exporter le corpus pour IRaMuTeQ',
+          icon: Icons.ios_share_rounded,
+          onPressed: onExport,
+        ),
+        const SizedBox(width: 10),
+        RoundIconButton(
+          tooltip: 'Réglages',
+          icon: Icons.tune_rounded,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.items});
+
+  final List<Interview> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
-    final style = Theme.of(context).appBarTheme.titleTextStyle;
-    return Text.rich(
-      TextSpan(
-        style: style,
+    final words = items.fold<int>(0, (s, i) => s + i.wordCount);
+    return FadeSlideIn(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const TextSpan(text: 'Semanti'),
-          TextSpan(
-            text: 'Q',
-            style: TextStyle(
-              backgroundColor: tones.markerSoft,
-              color: Theme.of(context).colorScheme.onSurface,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Vos entretiens,', style: t.headlineMedium),
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (r) => const LinearGradient(
+                    colors: Palette.brand,
+                  ).createShader(r),
+                  child: Text('mot à mot.',
+                      style: t.headlineMedium
+                          ?.copyWith(fontStyle: FontStyle.italic)),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  items.isEmpty
+                      ? 'Transcription, résumé, mots clés et liens entre les '
+                          'idées.'
+                      : '${items.length} entretien${items.length > 1 ? 's' : ''}'
+                          ' · ${_thousands(words)} mots',
+                  style: t.bodyMedium?.copyWith(color: tones.muted),
+                ),
+              ],
             ),
           ),
+          const HeroArt(size: Size(150, 128)),
         ],
+      ),
+    );
+  }
+
+  static String _thousands(int n) {
+    final s = n.toString();
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(' ');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+}
+
+class _ActionTiles extends StatelessWidget {
+  const _ActionTiles({required this.onAudio, required this.onPaste});
+
+  final VoidCallback onAudio;
+  final VoidCallback onPaste;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: FadeSlideIn(
+            delay: const Duration(milliseconds: 120),
+            child: _ActionTile(
+              title: 'Importer\nun audio',
+              subtitle: 'Mémo vocal, dictaphone',
+              colors: const [Palette.coral, Color(0xFFFF9466)],
+              art: TileArtKind.audio,
+              onTap: onAudio,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: FadeSlideIn(
+            delay: const Duration(milliseconds: 190),
+            child: _ActionTile(
+              title: 'Coller\nun texte',
+              subtitle: 'Retranscription',
+              colors: const [Palette.violet, Color(0xFF9B7BFF)],
+              art: TileArtKind.paste,
+              onTap: onPaste,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.title,
+    required this.subtitle,
+    required this.colors,
+    required this.art,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Color> colors;
+  final TileArtKind art;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        height: 172,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: colors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: colors.first.withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                TileArt(art, size: 54),
+                const Spacer(),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add_rounded,
+                      color: Colors.white, size: 20),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: displayFamily,
+                fontSize: 22,
+                height: 1.05,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontFamily: fontFamily,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SampleTile extends StatelessWidget {
+  const _SampleTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Accent.mint.soft(context),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: Accent.mint.gradient,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const TileArt(TileArtKind.sample),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Essayer avec un exemple',
+                      style: t.titleSmall
+                          ?.copyWith(color: Accent.mint.onSoft(context))),
+                  const SizedBox(height: 2),
+                  Text('Un entretien fictif, prêt à analyser',
+                      style: t.bodySmall
+                          ?.copyWith(color: Accent.mint.onSoft(context))),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded,
+                color: Accent.mint.onSoft(context)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CountPill extends StatelessWidget {
+  const _CountPill(this.n);
+
+  final int n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Accent.violet.soft(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        '$n',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Accent.violet.onSoft(context),
+            ),
       ),
     );
   }
@@ -226,44 +463,89 @@ class _InterviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
+    final accent = Accent.forKey(interview.id);
     final d = interview.updatedAt;
     final date = '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/${d.year}';
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+
+    return Dismissible(
+      key: ValueKey('dismiss-${interview.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) =>
+          confirmDeleteInterview(context, interview, deleteNow: false),
+      onDismissed: (_) {
+        final title = interview.title;
+        AppScope.of(context).store.delete(interview);
+        showSnack(context, '« $title » supprimé.');
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: tones.danger,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Supprimer',
+                style: TextStyle(
+                    fontFamily: fontFamily,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+            SizedBox(width: 8),
+            Icon(Icons.delete_outline_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+      child: Pressable(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(
               builder: (_) => EditorScreen(interview: interview)),
         ),
-        onLongPress: () => _confirmDelete(context),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        onLongPress: () => _actions(context),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 4, 14),
+          decoration: BoxDecoration(
+            color: tones.raised,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: tones.rule),
+          ),
           child: Row(
             children: [
+              InterviewAvatar(accent: accent),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(interview.title, style: t.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${interview.wordCount} mots · $date'
-                      '${interview.source.isEmpty ? '' : ' · ${interview.source}'}',
-                      style: t.bodySmall?.copyWith(color: tones.muted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Text(interview.title,
+                        style: t.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _MiniChip('${interview.wordCount} mots', accent),
+                        Text(date,
+                            style: t.bodySmall?.copyWith(color: tones.muted)),
+                        if (interview.ai != null)
+                          const _MiniChip('IA', Accent.violet,
+                              icon: Icons.auto_awesome_rounded),
+                      ],
                     ),
                   ],
                 ),
               ),
-              if (interview.ai != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Icon(Icons.auto_awesome, size: 18, color: tones.link),
-                ),
-              const Icon(Icons.chevron_right),
+              IconButton(
+                tooltip: 'Options',
+                icon: Icon(Icons.more_horiz_rounded, color: tones.muted),
+                onPressed: () => _actions(context),
+              ),
             ],
           ),
         ),
@@ -271,25 +553,132 @@ class _InterviewCard extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final ok = await showDialog<bool>(
+  Future<void> _actions(BuildContext context) async {
+    final choice = await showModalBottomSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer cet entretien ?'),
-        content: Text('« ${interview.title} » sera définitivement supprimé de '
-            'cet appareil.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Supprimer')),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                child: Text(interview.title,
+                    style: Theme.of(ctx).textTheme.headlineSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              _SheetAction(
+                icon: Icons.edit_rounded,
+                label: 'Renommer',
+                accent: Accent.sky,
+                onTap: () => Navigator.pop(ctx, 'rename'),
+              ),
+              _SheetAction(
+                icon: Icons.delete_outline_rounded,
+                label: 'Supprimer l\'entretien',
+                accent: Accent.coral,
+                danger: true,
+                onTap: () => Navigator.pop(ctx, 'delete'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!context.mounted) return;
+    switch (choice) {
+      case 'rename':
+        await renameInterview(context, interview);
+      case 'delete':
+        final title = interview.title;
+        if (await confirmDeleteInterview(context, interview) &&
+            context.mounted) {
+          showSnack(context, '« $title » supprimé.');
+        }
+    }
+  }
+}
+
+class _SheetAction extends StatelessWidget {
+  const _SheetAction({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Accent accent;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final tones = Tones.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Pressable(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: tones.raised,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              IconBadge(icon, accent: accent),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: danger ? tones.danger : null,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip(this.label, this.accent, {this.icon});
+
+  final String label;
+  final Accent accent;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = accent.onSoft(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: accent.soft(context),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: fg),
+            const SizedBox(width: 3),
+          ],
+          Text(label,
+              style: TextStyle(
+                  fontFamily: fontFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: fg)),
         ],
       ),
     );
-    if ((ok ?? false) && context.mounted) {
-      await AppScope.of(context).store.delete(interview);
-    }
   }
 }

@@ -3,7 +3,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../services/transcription.dart';
 import 'app_scope.dart';
+import 'common.dart';
 import 'editor_screen.dart';
+import 'illustrations.dart';
 import 'theme.dart';
 
 /// Transcription d'un fichier audio, avec suivi de l'avancement. À la fin,
@@ -89,7 +91,6 @@ class _TranscribeScreenState extends State<TranscribeScreen> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
-    final scheme = Theme.of(context).colorScheme;
     return PopScope(
       canPop: _error != null,
       child: Scaffold(
@@ -97,53 +98,87 @@ class _TranscribeScreenState extends State<TranscribeScreen> {
           title: const Text('Transcription'),
           automaticallyImplyLeading: _error != null,
         ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(widget.fileName,
-                    style: t.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 32),
-                if (_error == null) ...[
-                  Text(_stage, style: t.bodyLarge),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: _fraction,
-                      minHeight: 10,
-                      color: tones.marker,
-                      backgroundColor: tones.markerSoft,
-                    ),
-                  ),
-                  if (_fraction != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text('${(_fraction! * 100).round()} %',
-                          style: t.bodySmall?.copyWith(color: tones.muted)),
-                    ),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Gardez l\'app ouverte : l\'écran reste allumé pendant la '
-                    'transcription. Sur l\'appareil, comptez quelques minutes '
-                    'pour dix minutes d\'enregistrement selon le modèle choisi.',
-                    style: t.bodyMedium?.copyWith(color: tones.muted),
-                  ),
-                ] else ...[
-                  Icon(Icons.error_outline, color: scheme.error, size: 40),
-                  const SizedBox(height: 12),
-                  Text(_error.toString(), style: t.bodyLarge),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Retour'),
-                  ),
-                ],
-              ],
+        body: Backdrop(
+          variant: 2,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 350),
+                child: _error == null
+                    ? Column(
+                        key: const ValueKey('run'),
+                        children: [
+                          const Spacer(),
+                          ListeningArt(size: 240, progress: _fraction),
+                          const SizedBox(height: 8),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 250),
+                            child: Text(
+                              _fraction == null
+                                  ? ' '
+                                  : '${(_fraction! * 100).round()} %',
+                              key: ValueKey(_fraction == null
+                                  ? -1
+                                  : (_fraction! * 100).round()),
+                              style: t.headlineMedium,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_stage,
+                              style: t.titleMedium,
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: 6),
+                          Text(widget.fileName,
+                              style: t.bodySmall?.copyWith(color: tones.muted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          const Spacer(),
+                          TintCard(
+                            accent: Accent.sky,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.light_mode_rounded,
+                                    color: Accent.sky.onSoft(context)),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Gardez l\'app ouverte : l\'écran reste '
+                                    'allumé pendant la transcription. Sur '
+                                    'l\'iPhone, comptez quelques minutes pour '
+                                    'dix minutes d\'enregistrement.',
+                                    style: t.bodyMedium?.copyWith(
+                                        color: Accent.sky.onSoft(context)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        key: const ValueKey('error'),
+                        children: [
+                          const Spacer(),
+                          EmptyState(
+                            title: 'La transcription n\'a pas abouti',
+                            message: _error.toString(),
+                            accent: Accent.coral,
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: double.infinity,
+                            child: GradientButton(
+                              label: 'Retour',
+                              icon: Icons.arrow_back_rounded,
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),

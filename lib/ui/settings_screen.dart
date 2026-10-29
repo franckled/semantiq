@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/settings.dart';
 import 'app_scope.dart';
 import 'common.dart';
+import 'illustrations.dart';
+import 'motion.dart';
 import 'theme.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -14,12 +16,15 @@ class SettingsScreen extends StatelessWidget {
     final s = AppScope.of(context).settings;
     return Scaffold(
       appBar: AppBar(title: const Text('Réglages')),
-      body: ListenableBuilder(
+      body: Backdrop(
+        variant: 1,
+        child: ListenableBuilder(
         listenable: s,
         builder: (context, _) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
           children: [
-            const SectionTitle('Transcription des enregistrements'),
+            const _Header('Transcription', 'Des enregistrements au texte',
+                Icons.graphic_eq_rounded, Accent.coral),
             _Choice<AiProvider?>(
               value: s.transcriptionProvider,
               options: [
@@ -62,7 +67,8 @@ class SettingsScreen extends StatelessWidget {
                     s.setTranscriptionModel(s.transcriptionProvider!, v),
               ),
             ],
-            const SectionTitle('Résumé et thèmes'),
+            const _Header('Résumé et thèmes', 'Calculé sur l\'iPhone ou rédigé par une IA',
+                Icons.auto_awesome_rounded, Accent.violet),
             _Choice<AiProvider?>(
               value: s.summaryProvider,
               options: [
@@ -79,25 +85,31 @@ class SettingsScreen extends StatelessWidget {
                 value: s.chatModel(s.summaryProvider!),
                 onChanged: (v) => s.setChatModel(s.summaryProvider!, v),
               ),
-            const SectionTitle(
-              'Clés API',
-              subtitle: 'Rangées dans le trousseau sécurisé de l\'iPhone',
-            ),
+            const _Header('Clés API',
+                'Rangées dans le trousseau sécurisé de l\'iPhone',
+                Icons.key_rounded, Accent.sun),
             for (final p in AiProvider.values) _KeyTile(provider: p),
-            const SectionTitle('Analyse'),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Exclure l\'enquêteur des statistiques'),
-              value: s.excludeInterviewer,
-              onChanged: (v) => s.excludeInterviewer = v,
+            const _Header('Analyse', 'Ce qui est compté, et comment',
+                Icons.auto_graph_rounded, Accent.mint),
+            Card(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Exclure l\'enquêteur des statistiques'),
+                    value: s.excludeInterviewer,
+                    onChanged: (v) => s.excludeInterviewer = v,
+                  ),
+                  const Divider(indent: 16, endIndent: 16),
+                  SwitchListTile(
+                    title: const Text('Regrouper les formes d\'un même mot'),
+                    subtitle: const Text('patient, patiente, patients…'),
+                    value: s.groupForms,
+                    onChanged: (v) => s.groupForms = v,
+                  ),
+                ],
+              ),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Regrouper les formes d\'un même mot'),
-              value: s.groupForms,
-              onChanged: (v) => s.groupForms = v,
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             _TextSetting(
               label: 'Autres libellés de l\'enquêteur',
               hint: 'Thésard, Interne, Marie…',
@@ -113,8 +125,11 @@ class SettingsScreen extends StatelessWidget {
               value: s.globalStopwords,
               onChanged: (v) => s.globalStopwords = v,
             ),
-            const SectionTitle('Méthode'),
-            Text(
+            const _Header('Méthode', 'Ce que font les calculs',
+                Icons.menu_book_rounded, Accent.sky),
+            TintCard(
+              accent: Accent.sky,
+              child: Text(
               'Fréquences : mots pleins, hors mots-outils et tics de '
               'l\'oral (euh, voilà, bon…). Phrases clés : algorithme '
               'TextRank, qui classe les phrases selon le vocabulaire qu\'elles '
@@ -126,9 +141,47 @@ class SettingsScreen extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(color: Tones.of(context).muted),
+                  ?.copyWith(color: Accent.sky.onSoft(context)),
+            ),
             ),
             const CreditLine(),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header(this.title, this.subtitle, this.icon, this.accent);
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Accent accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return FadeSlideIn(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(2, 26, 2, 12),
+        child: Row(
+          children: [
+            IconBadge(icon, accent: accent, size: 42),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: t.titleLarge),
+                  Text(subtitle,
+                      style: t.bodySmall
+                          ?.copyWith(color: Tones.of(context).muted)),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -151,25 +204,61 @@ class _Choice<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final tones = Tones.of(context);
     final t = Theme.of(context).textTheme;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (final (v, title, subtitle) in options)
-            ListTile(
+    return Column(
+      children: [
+        for (final (v, title, subtitle) in options)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Pressable(
               onTap: () => onChanged(v),
-              leading: Icon(
-                v == value
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: v == value ? tones.link : tones.muted,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: appCurve,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: v == value ? Accent.violet.soft(context) : tones.raised,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: v == value ? Palette.violet : tones.rule,
+                    width: v == value ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: v == value ? Palette.violet : Colors.transparent,
+                        border: Border.all(
+                          color: v == value ? Palette.violet : tones.rule,
+                          width: 2,
+                        ),
+                      ),
+                      child: v == value
+                          ? const Icon(Icons.check_rounded,
+                              size: 16, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: t.titleSmall),
+                          Text(subtitle,
+                              style: t.bodySmall?.copyWith(color: tones.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              title: Text(title),
-              subtitle: Text(subtitle,
-                  style: t.bodySmall?.copyWith(color: tones.muted)),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
@@ -260,15 +349,46 @@ class _KeyTile extends StatelessWidget {
     final s = AppScope.of(context).settings;
     final has = s.hasKey(provider);
     final tones = Tones.of(context);
+    final accent = switch (provider) {
+      AiProvider.mistral => Accent.coral,
+      AiProvider.anthropic => Accent.sun,
+      AiProvider.openai => Accent.mint,
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        child: ListTile(
-          title: Text(provider.label),
-          subtitle: Text(has ? 'Clé enregistrée' : 'Aucune clé',
-              style: TextStyle(color: has ? tones.link : tones.muted)),
-          trailing: const Icon(Icons.key_outlined),
-          onTap: () => _edit(context, s),
+      child: Pressable(
+        onTap: () => _edit(context, s),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: tones.raised,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: tones.rule),
+          ),
+          child: Row(
+            children: [
+              IconBadge(Icons.key_rounded, accent: accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(provider.label,
+                        style: Theme.of(context).textTheme.titleSmall),
+                    Text(has ? 'Clé enregistrée' : 'Aucune clé',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: has ? Accent.mint.onSoft(context) : tones.muted,
+                              fontWeight: FontWeight.w700,
+                            )),
+                  ],
+                ),
+              ),
+              Icon(
+                has ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                color: has ? Palette.mint : tones.muted,
+              ),
+            ],
+          ),
         ),
       ),
     );
