@@ -164,6 +164,8 @@ void main() {
       openQuestions: const ['Budget de la licence'],
       nextSteps: const ['Réunion dans quinze jours'],
     );
+    // Nouvel arbre : la liste repart du haut.
+    await tester.pumpWidget(const SizedBox());
     await pumpIn(tester, tab());
     await tester.scrollUntilVisible(find.text('Préparer le support'), 300,
         scrollable: list);
