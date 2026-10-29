@@ -139,7 +139,9 @@ void main() {
     await pumpIn(tester, tab());
     expect(find.text('Compte rendu par IA'), findsOneWidget);
     // Liste construite à la demande : on fait défiler jusqu'aux rubriques.
-    final list = find.byType(Scrollable).last;
+    final list = find
+        .descendant(of: find.byType(MinutesTab), matching: find.byType(Scrollable))
+        .first;
     await tester.scrollUntilVisible(find.text('Moments marqués'), 300,
         scrollable: list);
     expect(find.text('Moments marqués'), findsOneWidget);
@@ -164,7 +166,7 @@ void main() {
     );
     await pumpIn(tester, tab());
     await tester.scrollUntilVisible(find.text('Préparer le support'), 300,
-        scrollable: find.byType(Scrollable).last);
+        scrollable: list);
     expect(find.text('Préparer le support'), findsOneWidget);
     expect(find.text('vendredi'), findsOneWidget);
     expect(tester.takeException(), isNull);
