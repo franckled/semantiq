@@ -1,0 +1,84 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Racinisation regroupe pluriel, féminin et conjugaisons
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Racinisation ne touche pas aux mots courts
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Découpage sépare les élisions et les pronoms
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Découpage mots-outils et tics de langage
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Tours de parole repère enquêteur et participant
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Tours de parole n'invente pas de locuteur
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Tours de parole texte sans locuteur
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse exclut l'enquêteur
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse mots fréquents
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse expressions récurrentes
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse phrases clés et résumé
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse cooccurrences
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse sans regroupement des formes
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Analyse texte vide
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Citations citation exacte malgré ponctuation et accents
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Citations citation inventée
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Exports rapport Markdown
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Exports corpus IRaMuTeQ
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Exports CSV des fréquences
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Réponse IA lit un JSON entouré de texte
+✅ /home/runner/work/semantiq/semantiq/test/engine_test.dart: Réponse IA refuse une réponse sans JSON
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Repérage local décisions
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Repérage local actions, responsable et échéance
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Repérage local points en suspens
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Repérage local moments marqués
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: les marqueurs restent hors de l'analyse
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: horloge
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: compte rendu IA : lecture et retour JSON
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: export du compte rendu
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Marqueurs dans la transcription paragraphes Whisper
+✅ /home/runner/work/semantiq/semantiq/test/meeting_test.dart: Marqueurs dans la transcription tours de parole Mistral
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Résumé
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Phrases clés
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Mots
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Corrélations
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Texte
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème dark Illustrations
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Résumé
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Phrases clés
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Mots
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Corrélations
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Texte
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Thème light Illustrations
+::endgroup::
+::group::❌ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Compte rendu de réunion (local puis IA) (failed)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.element (package:flutter_test/src/controller.dart:888:30)
+#2      WidgetController.dragUntilVisible.<anonymous closure> (package:flutter_test/src/controller.dart:2489:38)
+<asynchronous suspension>
+#3      TestAsyncUtils.guard.<anonymous closure> (package:flutter_test/src/test_async_utils.dart:130:27)
+<asynchronous suspension>
+#4      WidgetController.scrollUntilVisible.<anonymous closure> (package:flutter_test/src/controller.dart:2439:7)
+<asynchronous suspension>
+#5      TestAsyncUtils.guard.<anonymous closure> (package:flutter_test/src/test_async_utils.dart:130:27)
+<asynchronous suspension>
+#6      main.<anonymous closure> (file:///home/runner/work/semantiq/semantiq/test/ui_test.dart:168:5)
+<asynchronous suspension>
+#7      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#8      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  Compte rendu de réunion (local puis IA)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+Test failed. See exception logs above.
+The test description was: Compte rendu de réunion (local puis IA)
+
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Fiche d'un mot
+✅ /home/runner/work/semantiq/semantiq/test/ui_test.dart: Teintes stables
+::endgroup::
+
+::error::45 tests passed, 1 failed.
