@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import '../data/interview.dart';
 import '../engine/analysis.dart';
 import '../engine/export.dart';
+import '../engine/meeting.dart';
 import '../services/ai_summary.dart';
 import '../services/settings.dart';
 import 'app_scope.dart';
 import 'common.dart';
 import 'illustrations.dart';
+import 'minutes_tab.dart';
 import 'network_view.dart';
 import 'results_tabs.dart';
 import 'theme.dart';
@@ -30,6 +32,7 @@ class ResultsScreen extends StatefulWidget {
 
 class _ResultsScreenState extends State<ResultsScreen> {
   Analysis? _analysis;
+  MeetingCues? _cues;
   Object? _error;
   bool _aiRunning = false;
   bool _started = false;
@@ -46,7 +49,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }
 
   AnalysisOptions _options(Settings s) => AnalysisOptions(
-        excludeInterviewer: s.excludeInterviewer,
+        // En réunion, toutes les voix comptent.
+        excludeInterviewer: !_it.isMeeting && s.excludeInterviewer,
         groupForms: s.groupForms,
         interviewerLabels: s.interviewerLabels,
         extraStopwords: {...s.globalStopwordSet, ...splitWords(_it.stopwords)},
@@ -67,7 +71,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
       // une fermeture créée ici emporterait l'état de l'écran (contexte,
       // widgets), que Dart refuse d'envoyer à un autre isolat.
       final a = await _runAnalysis(text, options);
-      if (mounted) setState(() => _analysis = a);
+      final cues = _it.isMeeting ? findMeetingCues(text) : null;
+      if (mounted) {
+        setState(() {
+          _analysis = a;
+          _cues = cues;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -76,8 +86,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     final a = _analysis;
+    final items = _it.isMeeting ? meetingSections : sections;
     return DefaultTabController(
-      length: sections.length,
+      length: items.length,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_it.title, overflow: TextOverflow.ellipsis),
@@ -96,7 +107,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
             const SizedBox(width: 4),
           ],
-          bottom: const SectionTabBar(),
+          bottom: SectionTabBar(items: items),
         ),
         body: Backdrop(
           variant: 2,
@@ -114,12 +125,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     : TabBarView(
                         key: ValueKey(a),
                         children: [
-                          SummaryTab(
-                            analysis: a,
-                            interview: _it,
-                            aiRunning: _aiRunning,
-                            onGenerateAi: _generateAi,
-                          ),
+                          if (_it.isMeeting)
+                            MinutesTab(
+                              analysis: a,
+                              interview: _it,
+                              cues: _cues ?? findMeetingCues(_it.text),
+                              running: _aiRunning,
+                              onGenerate: _generateMinutes,
+                            )
+                          else
+                            SummaryTab(
+                              analysis: a,
+                              interview: _it,
+                              aiRunning: _aiRunning,
+                              onGenerateAi: _generateAi,
+                            ),
                           KeySentencesTab(analysis: a, interview: _it),
                           WordsTab(
                             analysis: a,
@@ -191,6 +211,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
               Text('Options d\'analyse',
                   style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: 8),
+              if (!_it.isMeeting)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Exclure l\'enquêteur'),
@@ -258,7 +279,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 child: Text('Exporter',
                     style: Theme.of(ctx).textTheme.headlineSmall),
               ),
-              item('md', Icons.description_rounded, 'Rapport complet',
+              if (_it.isMeeting)
+                item('minutes', Icons.event_note_rounded, 'Compte rendu',
+                    'Décisions, actions, points en suspens', Accent.rose),
+              item('md', Icons.description_rounded, 'Rapport d\'analyse',
                   'Markdown : Word, Pages, Notion…', Accent.violet),
               item('csv', Icons.table_chart_rounded, 'Tableau des fréquences',
                   'CSV pour Excel', Accent.mint),
@@ -273,6 +297,16 @@ class _ResultsScreenState extends State<ResultsScreen> {
     if (choice == null || !btnContext.mounted) return;
     final slug = fileSlug(_it.title);
     switch (choice) {
+      case 'minutes':
+        await shareTextFile(btnContext,
+            fileName: '${slug}_compte_rendu.md',
+            content: buildMinutesReport(
+              title: _it.title,
+              date: _it.createdAt,
+              duration: _it.duration,
+              minutes: _it.minutes,
+              cues: _cues ?? findMeetingCues(_it.text),
+            ));
       case 'md':
         await shareTextFile(btnContext,
             fileName: '$slug.md',
@@ -292,6 +326,45 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ));
     }
   }
+
+  Future<void> _generateMinutes() async {
+    final settings = AppScope.of(context).settings;
+    final provider = settings.summaryProvider;
+    if (provider == null || !settings.hasKey(provider)) {
+      await _askForKey('Compte rendu par IA');
+      return;
+    }
+    if (!await confirmCloudUse(context, settings, provider, audio: false)) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _aiRunning = true);
+    try {
+      final m = await AiSummaryService(settings).minutes(_it.text, provider);
+      _it.minutes = m;
+      if (mounted) await AppScope.of(context).store.save(_it);
+    } catch (e) {
+      if (mounted) await showErrorDialog(context, e);
+    } finally {
+      if (mounted) setState(() => _aiRunning = false);
+    }
+  }
+
+  Future<void> _askForKey(String title) => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(title),
+          content: const Text(
+              'Choisissez un fournisseur et saisissez votre clé API dans les '
+              'réglages (rubrique « Résumé et thèmes »). Le repérage calculé '
+              'sur l\'iPhone reste disponible sans clé.'),
+          actions: [
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK')),
+          ],
+        ),
+      );
 
   Future<void> _generateAi() async {
     final settings = AppScope.of(context).settings;

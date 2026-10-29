@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:semantiq/data/interview.dart';
 import 'package:semantiq/engine/analysis.dart';
+import 'package:semantiq/engine/meeting.dart';
 import 'package:semantiq/sample_interview.dart';
+import 'package:semantiq/sample_meeting.dart';
 import 'package:semantiq/ui/illustrations.dart';
+import 'package:semantiq/ui/minutes_tab.dart';
 import 'package:semantiq/ui/network_view.dart';
 import 'package:semantiq/ui/results_tabs.dart';
 import 'package:semantiq/ui/theme.dart';
@@ -112,6 +115,52 @@ void main() {
       });
     });
   }
+
+  testWidgets('Compte rendu de réunion (local puis IA)', (tester) async {
+    final meeting = Interview(
+      id: 'reunion',
+      title: 'Réunion test',
+      text: sampleMeeting,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      kind: InterviewKind.meeting,
+      duration: const Duration(minutes: 14),
+      markers: const [Duration(minutes: 8, seconds: 12)],
+    );
+    final a = analyze(sampleMeeting, const AnalysisOptions(excludeInterviewer: false));
+    final cues = findMeetingCues(sampleMeeting);
+    Widget tab() => MinutesTab(
+          analysis: a,
+          interview: meeting,
+          cues: cues,
+          running: false,
+          onGenerate: () {},
+        );
+    await pumpIn(tester, tab());
+    expect(find.text('Compte rendu par IA'), findsOneWidget);
+    expect(find.text('Repérage sur l\'iPhone'), findsOneWidget);
+    expect(find.text('Moments marqués'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    meeting.minutes = MeetingMinutes(
+      provider: 'Test',
+      model: 'm',
+      date: DateTime(2026),
+      summary: 'Lancement de l\'étude.',
+      participants: const ['Locuteur 1', 'Locuteur 2'],
+      topics: const ['Recrutement', 'Formation'],
+      decisions: const ['Sept cabinets retenus'],
+      actions: const [
+        ActionItem(task: 'Préparer le support', owner: 'Locuteur 1', due: 'vendredi'),
+      ],
+      openQuestions: const ['Budget de la licence'],
+      nextSteps: const ['Réunion dans quinze jours'],
+    );
+    await pumpIn(tester, tab());
+    expect(find.text('Préparer le support'), findsOneWidget);
+    expect(find.text('vendredi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Fiche d\'un mot', (tester) async {
     final key = analysis.words.first.key;

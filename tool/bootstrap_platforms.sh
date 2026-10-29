@@ -53,11 +53,12 @@ python3 - "$MANIFEST" <<'PY'
 import re, sys
 path = sys.argv[1]
 s = open(path, encoding='utf-8').read()
-if 'android.permission.INTERNET' not in s:
-    s = re.sub(r'(<manifest[^>]*>)',
-               r'\1\n    <uses-permission android:name="android.permission.INTERNET"/>',
-               s, count=1)
-    open(path, 'w', encoding='utf-8').write(s)
+for perm in ('INTERNET', 'RECORD_AUDIO', 'WAKE_LOCK'):
+    if f'android.permission.{perm}' not in s:
+        s = re.sub(r'(<manifest[^>]*>)',
+                   r'\1\n    <uses-permission android:name="android.permission.' + perm + '"/>',
+                   s, count=1)
+open(path, 'w', encoding='utf-8').write(s)
 PY
 
 # --- iOS ---------------------------------------------------------------------
@@ -90,6 +91,15 @@ data['CFBundleDisplayName'] = name
 data['CFBundleName'] = name
 # Pas de chiffrement propriétaire : évite la question export à chaque envoi.
 data['ITSAppUsesNonExemptEncryption'] = False
+# Enregistrement des réunions : micro, et poursuite de l'enregistrement
+# quand l'écran se verrouille.
+data['NSMicrophoneUsageDescription'] = (
+    "SemantiQ utilise le micro pour enregistrer vos réunions et entretiens. "
+    "L'enregistrement reste sur votre iPhone.")
+modes = data.get('UIBackgroundModes', [])
+if 'audio' not in modes:
+    modes.append('audio')
+data['UIBackgroundModes'] = modes
 with open(path, 'wb') as f:
     plistlib.dump(data, f)
 PY

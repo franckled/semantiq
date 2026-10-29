@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:whisper_ggml/whisper_ggml.dart';
 
+import '../engine/meeting.dart' show markerLine;
 import 'api_error.dart';
 import 'settings.dart';
 
@@ -20,11 +21,17 @@ class TranscriptionService {
   TranscriptionService(this.settings);
 
   final Settings settings;
+  List<Duration> _markers = const [];
 
+  /// Transcrit [sourcePath]. Les [markers] (moments marqués pendant
+  /// l'enregistrement) sont insérés dans le texte à leur place quand le
+  /// service fournit l'horodatage des passages.
   Future<String> transcribe(
     String sourcePath, {
     required ProgressCallback onProgress,
+    List<Duration> markers = const [],
   }) async {
+    _markers = [...markers]..sort();
     onProgress('Préparation du fichier', null);
     final work = await _workDir();
     // Copie sous un nom sans espace ni accent : les outils audio
@@ -79,7 +86,7 @@ class TranscriptionService {
     }
     return paragraphsFromSegments([
       for (final s in segments) (start: s.fromTs, end: s.toTs, text: s.text),
-    ]);
+    ], markers: _markers);
   }
 
   /// Télécharge le modèle Whisper s'il n'est pas déjà sur l'appareil.
@@ -147,7 +154,8 @@ class TranscriptionService {
           : 'Transcription par ${provider.label} (${i + 1}/${chunks.length})';
       onProgress(label, i / chunks.length);
       parts.add(switch (provider) {
-        AiProvider.mistral => await _mistral(chunks[i], key),
+        AiProvider.mistral =>
+          await _mistral(chunks[i], key, Duration(seconds: seconds * i)),
         AiProvider.openai => await _openai(chunks[i], key),
         AiProvider.anthropic => throw const ApiError(
             'Anthropic ne propose pas de transcription audio.'),
@@ -186,7 +194,7 @@ class TranscriptionService {
     return files;
   }
 
-  Future<String> _mistral(File chunk, String key) async {
+  Future<String> _mistral(File chunk, String key, Duration offset) async {
     final model = settings.transcriptionModel(AiProvider.mistral);
     Future<http.Response> send({required bool diarize}) async {
       final req = http.MultipartRequest(
@@ -216,13 +224,20 @@ class TranscriptionService {
     final segments = json['segments'];
     if (segments is List<Object?> &&
         segments.any((s) => s is Map<String, Object?> && s['speaker_id'] != null)) {
+      Duration? at(Object? sec) => sec is num
+          ? offset + Duration(milliseconds: (sec * 1000).round())
+          : null;
       return speakerTurns([
         for (final s in segments)
           if (s is Map<String, Object?>)
             (
               speaker: s['speaker_id']?.toString(),
               text: (s['text'] ?? '').toString(),
+              start: at(s['start']),
             ),
+      ], markers: [
+        for (final m in _markers)
+          if (m >= offset && m < offset + const Duration(hours: 1)) m,
       ]);
     }
     return (json['text'] ?? '').toString().trim();
@@ -264,26 +279,48 @@ class TranscriptionService {
 /// Assemble des segments Whisper en paragraphes : un silence de plus de
 /// deux secondes ouvre un nouveau paragraphe, ce qui marque souvent un
 /// changement de locuteur.
+///
+/// Chaque moment de [markers] est inséré, sur une ligne « ★ », avant le
+/// premier passage qui commence après lui.
 String paragraphsFromSegments(
-  List<({Duration start, Duration end, String text})> segments,
-) {
+  List<({Duration start, Duration end, String text})> segments, {
+  List<Duration> markers = const [],
+}) {
   final b = StringBuffer();
+  final pending = [...markers]..sort();
   Duration? lastEnd;
   for (final s in segments) {
     final text = s.text.trim();
     if (text.isEmpty || _isNoise(text)) continue;
-    if (lastEnd != null) {
+    var marked = false;
+    while (pending.isNotEmpty && pending.first <= s.start) {
+      b.write('${b.isEmpty ? '' : '\n\n'}${markerLine(pending.removeAt(0))}');
+      marked = true;
+    }
+    if (marked) {
+      b.write('\n\n');
+    } else if (lastEnd != null) {
       b.write(s.start - lastEnd > const Duration(seconds: 2) ? '\n\n' : ' ');
     }
     b.write(text);
     lastEnd = s.end;
+  }
+  for (final m in pending) {
+    b.write('\n\n${markerLine(m)}');
   }
   return b.toString().trim();
 }
 
 /// Regroupe des segments attribués à des locuteurs en tours de parole
 /// « Locuteur 1 : … ».
-String speakerTurns(List<({String? speaker, String text})> segments) {
+///
+/// Les [markers] sont insérés avant le premier segment qui commence après
+/// eux ; le locuteur est ensuite rappelé.
+String speakerTurns(
+  List<({String? speaker, String text, Duration? start})> segments, {
+  List<Duration> markers = const [],
+}) {
+  final pending = [...markers]..sort();
   final names = <String, String>{};
   String nameOf(String? id) {
     if (id == null) return 'Locuteur ?';
@@ -299,13 +336,21 @@ String speakerTurns(List<({String? speaker, String text})> segments) {
     final text = s.text.trim();
     if (text.isEmpty) continue;
     final who = nameOf(s.speaker);
+    final start = s.start;
+    while (start != null && pending.isNotEmpty && pending.first <= start) {
+      b.write('${b.isEmpty ? '' : '\n\n'}${markerLine(pending.removeAt(0))}');
+      current = null;
+    }
     if (who != current) {
-      if (current != null) b.write('\n\n');
+      if (b.isNotEmpty) b.write('\n\n');
       b.write('$who : $text');
       current = who;
     } else {
       b.write(' $text');
     }
+  }
+  for (final m in pending) {
+    b.write('\n\n${markerLine(m)}');
   }
   return b.toString();
 }

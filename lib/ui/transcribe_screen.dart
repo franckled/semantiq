@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../data/interview.dart';
 import '../services/transcription.dart';
 import 'app_scope.dart';
 import 'common.dart';
@@ -9,16 +10,24 @@ import 'illustrations.dart';
 import 'theme.dart';
 
 /// Transcription d'un fichier audio, avec suivi de l'avancement. À la fin,
-/// l'entretien est créé et ouvert dans l'éditeur.
+/// l'entretien (ou la réunion) est rempli, ou créé, puis ouvert dans
+/// l'éditeur.
 class TranscribeScreen extends StatefulWidget {
   const TranscribeScreen({
     super.key,
     required this.audioPath,
     required this.fileName,
+    this.target,
+    this.kind = InterviewKind.interview,
   });
 
   final String audioPath;
   final String fileName;
+
+  /// Entretien déjà créé (enregistrement fait dans l'app) à compléter ;
+  /// sinon un nouvel entretien de type [kind] est créé.
+  final Interview? target;
+  final InterviewKind kind;
 
   @override
   State<TranscribeScreen> createState() => _TranscribeScreenState();
@@ -55,6 +64,7 @@ class _TranscribeScreenState extends State<TranscribeScreen> {
     try {
       final text = await TranscriptionService(scope.settings).transcribe(
         widget.audioPath,
+        markers: widget.target?.markers ?? const [],
         onProgress: (stage, fraction) {
           if (mounted) {
             setState(() {
@@ -66,12 +76,25 @@ class _TranscribeScreenState extends State<TranscribeScreen> {
       );
       if (!mounted) return;
       final provider = scope.settings.transcriptionProvider;
-      final it = scope.store.create(
-        title: scope.store.nextTitle(),
-        text: text,
-        source: '${widget.fileName} · '
-            '${provider == null ? 'transcrit sur l\'appareil' : 'transcrit par ${provider.label}'}',
-      );
+      final how = provider == null
+          ? 'transcrit sur l\'appareil'
+          : 'transcrit par ${provider.label}';
+      final target = widget.target;
+      final Interview it;
+      if (target != null) {
+        it = target
+          ..text = text
+          ..source = '${widget.fileName} · $how';
+        await scope.store.save(it);
+      } else {
+        it = scope.store.create(
+          title: scope.store.nextTitle(widget.kind),
+          text: text,
+          kind: widget.kind,
+          source: '${widget.fileName} · $how',
+        );
+      }
+      if (!mounted) return;
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute<void>(

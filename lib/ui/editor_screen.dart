@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/interview.dart';
+import '../engine/meeting.dart' show formatClock;
 import '../engine/transcript.dart';
 import 'app_scope.dart';
 import 'common.dart';
@@ -11,6 +13,7 @@ import 'illustrations.dart';
 import 'motion.dart';
 import 'results_screen.dart';
 import 'theme.dart';
+import 'transcribe_screen.dart';
 
 /// Relecture et préparation du verbatim : locuteurs, pseudonymisation,
 /// puis lancement de l'analyse.
@@ -135,6 +138,17 @@ class _EditorScreenState extends State<EditorScreen> {
                     ? _Tips(onClose: () => setState(() => _showTips = false))
                     : const SizedBox(width: double.infinity),
               ),
+              if (empty && _audioPath != null)
+                FadeSlideIn(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: _TranscribeCard(
+                      duration: _it.duration,
+                      markers: _it.markers.length,
+                      onTap: _transcribe,
+                    ),
+                  ),
+                ),
               if (empty && widget.pasteOnOpen)
                 FadeSlideIn(
                   child: Padding(
@@ -184,6 +198,9 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ),
               _BottomBar(
+                labels: _it.isMeeting
+                    ? const ['L1', 'L2', 'L3']
+                    : const ['E', 'P1', 'P2'],
                 onSpeaker: _insertSpeaker,
                 onAnalyze: empty ? null : _analyze,
               ),
@@ -192,6 +209,43 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       ),
     );
+  }
+
+  String? get _audioPath => _store.audioPathOf(_it);
+
+  Future<void> _transcribe() async {
+    final path = _audioPath;
+    if (path == null) return;
+    final settings = AppScope.of(context).settings;
+    final provider = settings.transcriptionProvider;
+    if (provider != null &&
+        !await confirmCloudUse(context, settings, provider, audio: true)) {
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.pushReplacement(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => TranscribeScreen(
+          audioPath: path,
+          fileName: _it.title,
+          target: _it,
+          kind: _it.kind,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _shareAudio() async {
+    final path = _audioPath;
+    if (path == null) return;
+    final box = context.findRenderObject() as RenderBox?;
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(path, mimeType: 'audio/mp4')],
+      fileNameOverrides: ['${fileSlug(_it.title)}.m4a'],
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    ));
   }
 
   Future<void> _menu() async {
@@ -222,6 +276,13 @@ class _EditorScreenState extends State<EditorScreen> {
                   Accent.sun),
               item('share', Icons.ios_share_rounded, 'Partager le texte',
                   Accent.violet),
+              if (_audioPath != null) ...[
+                item('audio', Icons.audio_file_rounded,
+                    'Partager l\'enregistrement', Accent.rose),
+                if (_text.text.trim().isNotEmpty)
+                  item('retranscribe', Icons.subtitles_rounded,
+                      'Transcrire à nouveau', Accent.coral),
+              ],
               item('delete', Icons.delete_outline_rounded,
                   'Supprimer l\'entretien', Accent.coral,
                   danger: true),
@@ -242,6 +303,26 @@ class _EditorScreenState extends State<EditorScreen> {
       case 'share':
         await shareTextFile(context,
             fileName: '${fileSlug(_it.title)}.txt', content: _text.text);
+      case 'audio':
+        await _shareAudio();
+      case 'retranscribe':
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Transcrire à nouveau ?'),
+            content: const Text('Le texte actuel, et vos corrections, seront '
+                'remplacés par une nouvelle transcription.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Annuler')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Remplacer')),
+            ],
+          ),
+        );
+        if ((ok ?? false) && mounted) await _transcribe();
       case 'delete':
         _saveTimer?.cancel();
         final title = _it.title;
@@ -521,7 +602,14 @@ class _Tips extends StatelessWidget {
 }
 
 class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.onSpeaker, required this.onAnalyze});
+  const _BottomBar({
+    required this.labels,
+    required this.onSpeaker,
+    required this.onAnalyze,
+  });
+
+  /// Libellés proposés : le premier est l'enquêteur pour un entretien.
+  final List<String> labels;
 
   final void Function(String label) onSpeaker;
   final VoidCallback? onAnalyze;
@@ -560,17 +648,75 @@ class _BottomBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
-          speaker('E', scheme.surfaceContainerHighest, tones.muted),
-          speaker('P1', Accent.forKey('P1').soft(context),
-              Accent.forKey('P1').onSoft(context)),
-          speaker('P2', Accent.forKey('P2').soft(context),
-              Accent.forKey('P2').onSoft(context)),
+          for (final l in labels)
+            l == 'E'
+                ? speaker(l, scheme.surfaceContainerHighest, tones.muted)
+                : speaker(l, Accent.forKey(l).soft(context),
+                    Accent.forKey(l).onSoft(context)),
           Expanded(
             child: GradientButton(
               label: 'Analyser',
               icon: Icons.auto_graph_rounded,
               onPressed: onAnalyze,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TranscribeCard extends StatelessWidget {
+  const _TranscribeCard({
+    required this.duration,
+    required this.markers,
+    required this.onTap,
+  });
+
+  final Duration? duration;
+  final int markers;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final fg = Accent.coral.onSoft(context);
+    final d = duration;
+    return TintCard(
+      accent: Accent.coral,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const IconBadge(Icons.graphic_eq_rounded, accent: Accent.coral),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Enregistrement prêt',
+                        style: t.titleMedium?.copyWith(color: fg)),
+                    Text(
+                      [
+                        if (d != null) formatClock(d),
+                        if (markers > 0)
+                          '$markers moment${markers > 1 ? 's' : ''} marqué'
+                              '${markers > 1 ? 's' : ''}',
+                      ].join(' · '),
+                      style: t.bodySmall?.copyWith(color: fg),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GradientButton(
+            label: 'Transcrire l\'enregistrement',
+            icon: Icons.subtitles_rounded,
+            colors: const [Palette.coral, Palette.rose],
+            onPressed: onTap,
           ),
         ],
       ),

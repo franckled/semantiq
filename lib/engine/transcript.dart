@@ -127,6 +127,8 @@ Transcript parseTranscript(
   }
 
   for (final line in lines) {
+    // Repères de l'enregistrement (« ★ Moment marqué ») : hors analyse.
+    if (line.trimLeft().startsWith('★')) continue;
     final m = _labelLine.firstMatch(line);
     if (m != null && accepted(m.group(1)!.trim())) {
       flush();

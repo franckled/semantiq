@@ -13,9 +13,20 @@ import 'theme.dart';
 
 const _pad = EdgeInsets.fromLTRB(16, 4, 16, 40);
 
+typedef Section = ({String label, IconData icon, Accent accent});
+
 /// Les cinq rubriques des résultats, chacune dans sa couleur.
-const sections = [
+const List<Section> sections = [
   (label: 'Résumé', icon: Icons.auto_awesome_rounded, accent: Accent.violet),
+  (label: 'Phrases clés', icon: Icons.format_quote_rounded, accent: Accent.coral),
+  (label: 'Mots', icon: Icons.bar_chart_rounded, accent: Accent.sun),
+  (label: 'Corrélations', icon: Icons.hub_rounded, accent: Accent.mint),
+  (label: 'Texte', icon: Icons.article_rounded, accent: Accent.sky),
+];
+
+/// Rubriques d'une réunion : le compte rendu remplace le résumé.
+const List<Section> meetingSections = [
+  (label: 'Compte rendu', icon: Icons.event_note_rounded, accent: Accent.rose),
   (label: 'Phrases clés', icon: Icons.format_quote_rounded, accent: Accent.coral),
   (label: 'Mots', icon: Icons.bar_chart_rounded, accent: Accent.sun),
   (label: 'Corrélations', icon: Icons.hub_rounded, accent: Accent.mint),
@@ -25,7 +36,9 @@ const sections = [
 /// Barre d'onglets en pastilles colorées, qui suit le balayage entre les
 /// rubriques.
 class SectionTabBar extends StatefulWidget implements PreferredSizeWidget {
-  const SectionTabBar({super.key});
+  const SectionTabBar({super.key, this.items = sections});
+
+  final List<Section> items;
 
   @override
   Size get preferredSize => const Size.fromHeight(62);
@@ -35,7 +48,7 @@ class SectionTabBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _SectionTabBarState extends State<SectionTabBar> {
-  final _keys = List.generate(sections.length, (_) => GlobalKey());
+  late final _keys = List.generate(widget.items.length, (_) => GlobalKey());
   TabController? _controller;
   int _last = 0;
 
@@ -82,14 +95,14 @@ class _SectionTabBarState extends State<SectionTabBar> {
             final pos = c.animation!.value;
             return Row(
               children: [
-                for (var i = 0; i < sections.length; i++)
+                for (var i = 0; i < widget.items.length; i++)
                   Padding(
                     key: _keys[i],
                     padding: const EdgeInsets.only(right: 8),
                     child: _Pill(
-                      label: sections[i].label,
-                      icon: sections[i].icon,
-                      accent: sections[i].accent,
+                      label: widget.items[i].label,
+                      icon: widget.items[i].icon,
+                      accent: widget.items[i].accent,
                       selected: (1 - (pos - i).abs()).clamp(0.0, 1.0),
                       onTap: () => c.animateTo(i),
                     ),
@@ -206,7 +219,14 @@ class SummaryTab extends StatelessWidget {
           ),
         const SizedBox(height: 18),
         step(ai == null
-            ? _AiInvite(running: aiRunning, onGenerate: onGenerateAi)
+            ? AiInviteCard(
+                title: 'Résumé par IA',
+                text: 'Facultatif : un modèle de langage rédige un résumé et '
+                    'propose des thèmes illustrés de verbatims. Chaque '
+                    'citation est vérifiée dans le texte.',
+                running: aiRunning,
+                onGenerate: onGenerateAi,
+              )
             : _AiSummary(
                 interview: interview,
                 running: aiRunning,
@@ -261,7 +281,7 @@ class SummaryTab extends StatelessWidget {
                       for (final s in a.summary)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 14),
-                          child: _SentenceLine(sentence: s),
+                          child: SentenceLine(sentence: s),
                         ),
                     ],
                   ),
@@ -325,9 +345,17 @@ class _StatsRow extends StatelessWidget {
 }
 
 /// Encadré en dégradé qui invite à générer un résumé par IA.
-class _AiInvite extends StatelessWidget {
-  const _AiInvite({required this.running, required this.onGenerate});
+class AiInviteCard extends StatelessWidget {
+  const AiInviteCard({
+    super.key,
+    required this.title,
+    required this.text,
+    required this.running,
+    required this.onGenerate,
+  });
 
+  final String title;
+  final String text;
   final bool running;
   final VoidCallback onGenerate;
 
@@ -356,15 +384,13 @@ class _AiInvite extends StatelessWidget {
                     accent: Accent.violet, size: 44),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('Résumé par IA', style: t.titleLarge),
+                  child: Text(title, style: t.titleLarge),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Text(
-              'Facultatif : un modèle de langage rédige un résumé et propose '
-              'des thèmes illustrés de verbatims. Chaque citation est '
-              'vérifiée dans le texte.',
+              text,
               style: t.bodyMedium?.copyWith(color: tones.muted),
             ),
             const SizedBox(height: 16),
@@ -387,6 +413,7 @@ class _AiInvite extends StatelessWidget {
 
 class _Thinking extends StatelessWidget {
   const _Thinking();
+
 
   @override
   Widget build(BuildContext context) {
@@ -642,8 +669,8 @@ class QuoteTile extends StatelessWidget {
   }
 }
 
-class _SentenceLine extends StatelessWidget {
-  const _SentenceLine({required this.sentence, this.highlight});
+class SentenceLine extends StatelessWidget {
+  const SentenceLine({super.key, required this.sentence, this.highlight});
 
   final Sentence sentence;
   final bool Function(String word)? highlight;
@@ -811,7 +838,7 @@ class _RankedCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SentenceLine(sentence: ranked.sentence),
+                  SentenceLine(sentence: ranked.sentence),
                   const SizedBox(height: 12),
                   GrowBar(
                     value: ranked.score,
@@ -1240,7 +1267,7 @@ class WordSheet extends StatelessWidget {
           for (final s in sentences)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _SentenceLine(
+              child: SentenceLine(
                 sentence: s,
                 highlight: (word) => forms.contains(word),
               ),

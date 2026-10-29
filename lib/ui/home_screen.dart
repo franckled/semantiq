@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../data/interview.dart';
 import '../engine/export.dart';
 import '../sample_interview.dart';
+import '../sample_meeting.dart';
 import 'app_scope.dart';
 import 'common.dart';
 import 'editor_screen.dart';
 import 'illustrations.dart';
 import 'motion.dart';
+import 'record_screen.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 import 'transcribe_screen.dart';
@@ -39,6 +41,17 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 22),
                         _Hero(items: items),
                         const SizedBox(height: 24),
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 60),
+                          child: _RecordTile(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (_) => const RecordScreen()),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         _ActionTiles(
                           onAudio: () => _importAudio(context),
                           onPaste: () => _pasteText(context),
@@ -48,7 +61,21 @@ class HomeScreen extends StatelessWidget {
                           FadeSlideIn(
                             delay: const Duration(milliseconds: 260),
                             child: _SampleTile(
-                                onTap: () => _openSample(context)),
+                              title: 'Essayer avec un entretien',
+                              subtitle: 'Un entretien fictif, prêt à analyser',
+                              accent: Accent.mint,
+                              onTap: () => _openSample(context),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 320),
+                            child: _SampleTile(
+                              title: 'Essayer avec une réunion',
+                              subtitle: 'Décisions, actions, compte rendu',
+                              accent: Accent.sky,
+                              onTap: () => _openSampleMeeting(context),
+                            ),
                           ),
                         ],
                         if (items.isNotEmpty)
@@ -123,6 +150,8 @@ class HomeScreen extends StatelessWidget {
           "l'app Fichiers, puis réessayez.");
       return;
     }
+    final kind = await _askKind(context);
+    if (kind == null || !context.mounted) return;
     if (provider != null &&
         !await confirmCloudUse(context, scope.settings, provider, audio: true)) {
       return;
@@ -131,8 +160,59 @@ class HomeScreen extends StatelessWidget {
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => TranscribeScreen(audioPath: path, fileName: name),
+        builder: (_) =>
+            TranscribeScreen(audioPath: path, fileName: name, kind: kind),
       ),
+    );
+  }
+
+  Future<InterviewKind?> _askKind(BuildContext context) {
+    return showModalBottomSheet<InterviewKind>(
+      context: context,
+      builder: (ctx) {
+        Widget option(InterviewKind k, IconData icon, String sub, Accent a) =>
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: IconBadge(icon, accent: a, size: 44),
+              title: Text(k.label, style: Theme.of(ctx).textTheme.titleSmall),
+              subtitle: Text(sub),
+              onTap: () => Navigator.pop(ctx, k),
+            );
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text('Cet enregistrement est…',
+                    style: Theme.of(ctx).textTheme.headlineSmall),
+              ),
+              option(InterviewKind.interview, Icons.record_voice_over_rounded,
+                  'Recherche qualitative : thèmes, verbatims', Accent.violet),
+              option(InterviewKind.meeting, Icons.groups_rounded,
+                  'Compte rendu : décisions, actions', Accent.rose),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openSampleMeeting(BuildContext context) async {
+    final store = AppScope.of(context).store;
+    final it = store.create(
+      title: 'Exemple – réunion de lancement d\'étude',
+      text: sampleMeeting,
+      kind: InterviewKind.meeting,
+      source: 'Exemple fourni avec l\'app',
+      duration: const Duration(minutes: 14, seconds: 32),
+      markers: const [Duration(minutes: 8, seconds: 12)],
+    );
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => EditorScreen(interview: it)),
     );
   }
 
@@ -209,6 +289,8 @@ class _Hero extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
     final words = items.fold<int>(0, (s, i) => s + i.wordCount);
+    final meetings = items.where((i) => i.isMeeting).length;
+    final interviews = items.length - meetings;
     return FadeSlideIn(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -230,10 +312,15 @@ class _Hero extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   items.isEmpty
-                      ? 'Transcription, résumé, mots clés et liens entre les '
-                          'idées.'
-                      : '${items.length} entretien${items.length > 1 ? 's' : ''}'
-                          ' · ${_thousands(words)} mots',
+                      ? 'Entretiens et réunions : transcription, résumé, mots '
+                          'clés et liens entre les idées.'
+                      : [
+                          if (interviews > 0)
+                            '$interviews entretien${interviews > 1 ? 's' : ''}',
+                          if (meetings > 0)
+                            '$meetings réunion${meetings > 1 ? 's' : ''}',
+                          '${_thousands(words)} mots',
+                        ].join(' · '),
                   style: t.bodyMedium?.copyWith(color: tones.muted),
                 ),
               ],
@@ -379,20 +466,102 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-class _SampleTile extends StatelessWidget {
-  const _SampleTile({required this.onTap});
+class _RecordTile extends StatelessWidget {
+  const _RecordTile({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 18, 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Palette.rose, Palette.coral],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: Palette.rose.withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.mic_rounded,
+                  color: Colors.white, size: 32),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enregistrer une réunion',
+                    style: TextStyle(
+                      fontFamily: displayFamily,
+                      fontSize: 22,
+                      height: 1.1,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Compte rendu, décisions et actions',
+                    style: TextStyle(
+                      fontFamily: fontFamily,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.88),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SampleTile extends StatelessWidget {
+  const _SampleTile({
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final Accent accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final fg = accent.onSoft(context);
     return Pressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Accent.mint.soft(context),
+          color: accent.soft(context),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -402,7 +571,7 @@ class _SampleTile extends StatelessWidget {
               height: 52,
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                gradient: Accent.mint.gradient,
+                gradient: accent.gradient,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const TileArt(TileArtKind.sample),
@@ -412,18 +581,13 @@ class _SampleTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Essayer avec un exemple',
-                      style: t.titleSmall
-                          ?.copyWith(color: Accent.mint.onSoft(context))),
+                  Text(title, style: t.titleSmall?.copyWith(color: fg)),
                   const SizedBox(height: 2),
-                  Text('Un entretien fictif, prêt à analyser',
-                      style: t.bodySmall
-                          ?.copyWith(color: Accent.mint.onSoft(context))),
+                  Text(subtitle, style: t.bodySmall?.copyWith(color: fg)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_rounded,
-                color: Accent.mint.onSoft(context)),
+            Icon(Icons.arrow_forward_rounded, color: fg),
           ],
         ),
       ),
@@ -530,10 +694,18 @@ class _InterviewCard extends StatelessWidget {
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _MiniChip('${interview.wordCount} mots', accent),
+                        if (interview.isMeeting)
+                          const _MiniChip('Réunion', Accent.rose,
+                              icon: Icons.groups_rounded),
+                        if (interview.text.trim().isEmpty &&
+                            interview.audioFile != null)
+                          const _MiniChip('À transcrire', Accent.coral,
+                              icon: Icons.graphic_eq_rounded)
+                        else
+                          _MiniChip('${interview.wordCount} mots', accent),
                         Text(date,
                             style: t.bodySmall?.copyWith(color: tones.muted)),
-                        if (interview.ai != null)
+                        if (interview.ai != null || interview.minutes != null)
                           const _MiniChip('IA', Accent.violet,
                               icon: Icons.auto_awesome_rounded),
                       ],
