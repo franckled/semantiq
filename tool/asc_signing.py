@@ -52,20 +52,33 @@ def token() -> str:
 
 
 def call(method: str, path: str, body=None):
-    req = urllib.request.Request(
-        API + path,
-        method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={'Authorization': f'Bearer {token()}',
-                 'Content-Type': 'application/json'},
-    )
-    try:
-        with urllib.request.urlopen(req) as r:
-            raw = r.read()
-            return json.loads(raw) if raw else None
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors='replace')
-        sys.exit(f'::error::App Store Connect {method} {path} : {e.code} {detail}')
+    # Les erreurs 5xx d'App Store Connect sont souvent passagères : on
+    # réessaie jusqu'à 5 fois en espaçant les tentatives.
+    for attempt in range(5):
+        req = urllib.request.Request(
+            API + path,
+            method=method,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={'Authorization': f'Bearer {token()}',
+                     'Content-Type': 'application/json'},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                raw = r.read()
+                return json.loads(raw) if raw else None
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors='replace')
+            if e.code >= 500 and attempt < 4:
+                print(f'App Store Connect {method} {path} : {e.code}, '
+                      f'nouvel essai dans {10 * (attempt + 1)} s')
+                time.sleep(10 * (attempt + 1))
+                continue
+            sys.exit(f'::error::App Store Connect {method} {path} : {e.code} {detail}')
+        except (urllib.error.URLError, TimeoutError) as e:
+            if attempt < 4:
+                time.sleep(10 * (attempt + 1))
+                continue
+            sys.exit(f'::error::App Store Connect {method} {path} : {e}')
 
 
 def env_out(**kv):
