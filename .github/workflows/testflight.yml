@@ -79,10 +79,15 @@ jobs:
         run: |
           BUILD_NUMBER=$((100 + GITHUB_RUN_NUMBER))
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d+ -f1)
+          BUILD_DATE=$(TZ=Europe/Paris date +%d/%m/%Y)
+          BUILD_YEAR=$(TZ=Europe/Paris date +%Y)
           set -o pipefail
           flutter build ios --release --config-only --no-codesign \
             --build-number "$BUILD_NUMBER" \
-            --dart-define=APP_VERSION=ios-${GITHUB_SHA::7} \
+            --dart-define="APP_VERSION=$VERSION ($BUILD_NUMBER)" \
+            --dart-define="BUILD_DATE=$BUILD_DATE" \
+            --dart-define="BUILD_YEAR=$BUILD_YEAR" \
             2>&1 | tee "$RUNNER_TEMP/prepare.log"
 
       # Certificat de distribution et profil App Store durables, réutilisés

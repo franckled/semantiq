@@ -3,7 +3,7 @@ description: >-
   SemantiQ – analyser les verbatims d'entretiens de thèse : transcription,
   résumé, fréquences, phrases clés et cooccurrences.
 publish_to: none
-version: 0.1.0+1
+version: 0.3.0+1
 
 environment:
   sdk: ^3.9.0

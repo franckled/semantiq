@@ -62,4 +62,4 @@ lib/ui/        écrans
 tool/          scripts de compilation
 ```
 
-Dr Franck LE DUFF – Centre Hospitalier de Bastia – Unité de Recherche Clinique
+© 2026 Franck LE DUFF

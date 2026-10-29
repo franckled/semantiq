@@ -68,7 +68,12 @@ jobs:
           bash tool/bootstrap_platforms.sh 2>&1 | tee "$RUNNER_TEMP/logs/bootstrap.log"
           flutter pub get
           dart run flutter_launcher_icons
-          flutter build apk --release 2>&1 | tail -n 400 | tee "$RUNNER_TEMP/logs/build.log"
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d+ -f1)
+          flutter build apk --release \
+            --dart-define="APP_VERSION=$VERSION (${GITHUB_SHA::7})" \
+            --dart-define="BUILD_DATE=$(TZ=Europe/Paris date +%d/%m/%Y)" \
+            --dart-define="BUILD_YEAR=$(TZ=Europe/Paris date +%Y)" \
+            2>&1 | tail -n 400 | tee "$RUNNER_TEMP/logs/build.log"
           test -f build/app/outputs/flutter-apk/app-release.apk
       - uses: actions/upload-artifact@v5
         with:

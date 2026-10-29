@@ -144,6 +144,9 @@ class SettingsScreen extends StatelessWidget {
                   ?.copyWith(color: Accent.sky.onSoft(context)),
             ),
             ),
+            const _Header('À propos', 'SemantiQ',
+                Icons.info_outline_rounded, Accent.rose),
+            const _About(),
             const CreditLine(),
           ],
         ),
@@ -444,5 +447,43 @@ class _KeyTile extends StatelessWidget {
     );
     if (result == null) return;
     await s.setApiKey(provider, result);
+  }
+}
+
+class _About extends StatelessWidget {
+  const _About();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tones = Tones.of(context);
+    Widget row(String label, String value) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    style: t.bodyMedium?.copyWith(color: tones.muted)),
+              ),
+              Text(value,
+                  style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
+        );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          children: [
+            row('Version', AppInfo.version),
+            const Divider(),
+            row('Date de la version',
+                AppInfo.buildDate.isEmpty ? '—' : AppInfo.buildDate),
+            const Divider(),
+            row('Auteur', Credit.author),
+          ],
+        ),
+      ),
+    );
   }
 }

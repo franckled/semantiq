@@ -12,12 +12,22 @@ import 'illustrations.dart';
 import 'motion.dart';
 import 'theme.dart';
 
-/// Auteur et structure de rattachement.
+/// Auteur de l'application.
 abstract final class Credit {
-  static const author = 'Dr Franck LE DUFF';
-  static const hospital = 'Centre Hospitalier de Bastia';
-  static const unit = 'Unité de Recherche Clinique';
-  static const oneLine = '$author – $hospital – $unit';
+  static const author = 'Franck LE DUFF';
+  static const copyright = '© ${AppInfo.year} $author';
+}
+
+/// Version et date de compilation, fournies au moment de la compilation
+/// (--dart-define=APP_VERSION=… --dart-define=BUILD_DATE=…).
+abstract final class AppInfo {
+  static const version =
+      String.fromEnvironment('APP_VERSION', defaultValue: 'développement');
+
+  /// Date de compilation, au format JJ/MM/AAAA.
+  static const buildDate = String.fromEnvironment('BUILD_DATE');
+
+  static const year = String.fromEnvironment('BUILD_YEAR', defaultValue: '2026');
 }
 
 /// Mention d'auteur, discrète, en bas de page.
@@ -35,8 +45,8 @@ class CreditLine extends StatelessWidget {
         children: [
           Container(
             width: 4,
-            height: 46,
-            margin: const EdgeInsets.only(top: 2, right: 12),
+            height: 18,
+            margin: const EdgeInsets.only(top: 1, right: 12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: Palette.brand,
@@ -48,7 +58,7 @@ class CreditLine extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '${Credit.author}\n${Credit.hospital}\n${Credit.unit}',
+              Credit.copyright,
               style: t.bodySmall?.copyWith(color: tones.muted, height: 1.4),
             ),
           ),
