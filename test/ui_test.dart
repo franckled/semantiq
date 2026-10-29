@@ -138,8 +138,14 @@ void main() {
         );
     await pumpIn(tester, tab());
     expect(find.text('Compte rendu par IA'), findsOneWidget);
-    expect(find.text('Repérage sur l\'iPhone'), findsOneWidget);
+    // Liste construite à la demande : on fait défiler jusqu'aux rubriques.
+    final list = find.byType(Scrollable).last;
+    await tester.scrollUntilVisible(find.text('Moments marqués'), 300,
+        scrollable: list);
     expect(find.text('Moments marqués'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Repérage sur l\'iPhone'), 300,
+        scrollable: list);
+    expect(find.text('Repérage sur l\'iPhone'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     meeting.minutes = MeetingMinutes(
@@ -157,6 +163,8 @@ void main() {
       nextSteps: const ['Réunion dans quinze jours'],
     );
     await pumpIn(tester, tab());
+    await tester.scrollUntilVisible(find.text('Préparer le support'), 300,
+        scrollable: find.byType(Scrollable).last);
     expect(find.text('Préparer le support'), findsOneWidget);
     expect(find.text('vendredi'), findsOneWidget);
     expect(tester.takeException(), isNull);
