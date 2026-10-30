@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SemantiQ - Verbatims | Analyse Qualitative & Sémantique iOS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .tab-btn.active {
+            color: #0284c7;
+            border-bottom: 2px solid #0284c7;
+        }
+        .app-gradient {
+            background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 transition-colors duration-200 min-h-screen flex flex-col justify-between">
+
+    <!-- En-tête / Navigation Style Apple -->
+    <header class="sticky top-0 z-50 glass-header border-b border-slate-200/80">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo & Nom de l'app -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('marketing')">
+                    <div class="w-10 h-10 rounded-xl app-gradient flex items-center justify-center text-white shadow-md">
+                        <i data-lucide="brain-circuit" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-base sm:text-lg tracking-tight leading-none text-slate-900">SemantiQ</span>
+                        <span class="text-[10px] font-semibold text-sky-600 uppercase tracking-widest leading-tight">Verbatims</span>
+                    </div>
+                </div>
+
+                <!-- Onglets Principaux (Desktop) -->
+                <nav class="hidden md:flex space-x-8 text-sm font-medium">
+                    <button onclick="switchTab('marketing')" id="tab-marketing" class="tab-btn active py-5 px-1 transition-colors">
+                        Présentation & Offre
+                    </button>
+                    <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn py-5 px-1 text-slate-500 hover:text-slate-900 transition-colors">
+                        Mode d'emploi
+                    </button>
+                    <button onclick="switchTab('privacy')" id="tab-privacy" class="tab-btn py-5 px-1 text-slate-500 hover:text-slate-900 transition-colors">
+                        Confidentialité
+                    </button>
+                </nav>
+
+                <!-- Bouton Télécharger CTA -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#appstore" onclick="switchTab('marketing')" class="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full transition-all duration-200 shadow-sm">
+                        <i data-lucide="apple" class="w-4 h-4"></i>
+                        <span>Télécharger sur l'App Store</span>
+                    </a>
+                </div>
+
+                <!-- Menu Mobile Toggle -->
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Mobile -->
+        <div id="mobile-menu" class="hidden md:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-4 space-y-2 text-base font-medium">
+            <button onclick="switchTab('marketing')" class="block w-full text-left px-3 py-2 rounded-md hover:bg-slate-100">Présentation & Offre</button>
+            <button onclick="switchTab('guide')" class="block w-full text-left px-3 py-2 rounded-md hover:bg-slate-100">Mode d'emploi</button>
+            <button onclick="switchTab('privacy')" class="block w-full text-left px-3 py-2 rounded-md hover:bg-slate-100">Confidentialité</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINERS -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow w-full">
+
+        <!-- ========================================== -->
+        <!-- SECTION 1: VITRINE MARKETING / LANDING    -->
+        <!-- ========================================== -->
+        <section id="content-marketing" class="tab-content space-y-20">
+            <!-- Hero Banner -->
+            <div class="text-center space-y-6 pt-4 pb-8">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                    <i data-lucide="microscope" class="w-3.5 h-3.5"></i> Analyse Qualitative & Médicale sur iOS
+                </span>
+                <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                    Transformez vos verbatims en<br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-indigo-600">insights scientifiques clairs.</span>
+                </h1>
+                <p class="max-w-2xl mx-auto text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
+                    <strong>SemantiQ - Verbatims</strong> est l'outil ultime pour les chercheurs, internes en médecine, thésards et analystes de santé. Catégorisez, codez et dégagez les thématiques de vos entretiens en toute sécurité.
+                </p>
+                
+                <!-- Buttons CTA -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                    <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-3.5 rounded-2xl hover:bg-slate-800 transition shadow-lg hover:shadow-xl font-medium text-sm">
+                        <i data-lucide="apple" class="w-6 h-6 fill-current"></i>
+                        <div class="text-left">
+                            <div class="text-[10px] uppercase tracking-wider opacity-80 leading-none">Disponible sur l'</div>
+                            <div class="text-sm font-bold leading-tight">App Store</div>
+                        </div>
+                    </a>
+                    <button onclick="switchTab('guide')" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-800 px-6 py-3.5 rounded-2xl transition font-medium text-sm">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                        Découvrir le guide
+                    </button>
+                </div>
+            </div>
+
+            <!-- Audience Targets -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3 card-hover">
+                    <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+                        <i data-lucide="stethoscope" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900">Internes & Médecins</h3>
+                    <p class="text-sm text-slate-600">Idéal pour les thèses d'exercice médical, études qualitatives en santé et analyses d'entretiens patients.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3 card-hover">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                        <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900">Thésards & Doctorants</h3>
+                    <p class="text-sm text-slate-600">Structurez vos corpus de recherche en sciences humaines, sociales et médicales en toute fluidité.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3 card-hover">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <i data-lucide="file-search" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900">Analystes Qualitatifs</h3>
+                    <p class="text-sm text-slate-600">Gagnez un temps précieux lors de l'extraction de thématiques complexes et le codage récurrent.</p>
+                </div>
+            </div>
+
+            <!-- App Mockup UI Preview -->
+            <div class="relative max-w-4xl mx-auto bg-gradient-to-b from-sky-50 to-indigo-50 rounded-3xl p-6 sm:p-12 border border-sky-100 shadow-xl overflow-hidden">
+                <div class="text-center mb-8 space-y-2">
+                    <h2 class="text-2xl font-bold text-slate-900">Conçu pour l'excellence analytique</h2>
+                    <p class="text-sm text-slate-600">Aperçu du laboratoire d'analyse de verbatims sur iPad & iPhone</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-6 shadow-md border border-slate-200/60 max-w-2xl mx-auto space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-red-400 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
+                            <span class="text-xs font-semibold text-slate-400 ml-2">Entretien_Patient_042.txt</span>
+                        </div>
+                        <span class="text-[10px] bg-sky-100 text-sky-800 font-bold px-2.5 py-1 rounded-full">Analyse sémantique</span>
+                    </div>
+
+                    <div class="space-y-3 font-sans text-xs sm:text-sm">
+                        <div class="p-3 bg-slate-50 rounded-xl border-l-4 border-sky-500 space-y-1">
+                            <p class="text-slate-800 italic">« La prise en charge initiale était rapide, mais le ressenti face à l'annonce du diagnostic est resté très anxiogène pour la famille. »</p>
+                            <div class="flex gap-2 pt-1">
+                                <span class="bg-sky-100 text-sky-700 text-[10px] px-2 py-0.5 rounded font-medium">#PriseEnCharge</span>
+                                <span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded font-medium">#ImpactAnxiété</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500 space-y-1">
+                            <p class="text-slate-800 italic">« L'écoute de l'équipe soignante a totalement changé ma perception de l'hospitalisation. »</p>
+                            <div class="flex gap-2 pt-1">
+                                <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-medium">#RelationSoignantPatient</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="space-y-10">
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Fonctionnalités Clés</h2>
+                    <p class="text-slate-500 text-sm">Tout ce dont vous avez besoin pour vos travaux de recherche qualitative.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                            <i data-lucide="tags" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Codage & Tags</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed">Assignez facilement des codes thématiques et hiérarchisez vos sous-catégories de verbatims.</p>
+                    </div>
+
+                    <div class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Sémantique Intelligente</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed">Repérez automatiquement les patterns, répétitions et clusters d'idées dans vos entretiens.</p>
+                    </div>
+
+                    <div class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Rapports Visuels</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed">Générez des graphiques de répartition des occurrences thématiques prêts pour publication.</p>
+                    </div>
+
+                    <div class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-base">Export Excel & PDF</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed">Exportez vos matrices d’analyse complètes directement au format .XLSX, PDF ou CSV.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- SECTION 2: MODE D'EMPLOI / GUIDE TUTORIEL -->
+        <!-- ========================================== -->
+        <section id="content-guide" class="tab-content hidden space-y-16">
+            <div class="text-center max-w-2xl mx-auto space-y-3">
+                <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">Guide d'Utilisation</h1>
+                <p class="text-slate-500 text-sm">Apprenez à maîtriser l'analyse de verbatims dans SemantiQ étape par étape.</p>
+            </div>
+
+            <!-- Steps Workflow -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+                <!-- Step 1 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                    <div class="w-10 h-10 bg-sky-100 text-sky-700 rounded-xl flex items-center justify-center font-bold text-base">
+                        1
+                    </div>
+                    <h3 class="font-bold text-base">Importation</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Importez vos transcriptions (fichiers TXT, DOCX ou saisie directe) dans l'application.
+                    </p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                    <div class="w-10 h-10 bg-sky-100 text-sky-700 rounded-xl flex items-center justify-center font-bold text-base">
+                        2
+                    </div>
+                    <h3 class="font-bold text-base">Codage des verbatims</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Surlignez les passages clés et appliquez vos étiquettes thématiques en quelques gestes.
+                    </p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                    <div class="w-10 h-10 bg-sky-100 text-sky-700 rounded-xl flex items-center justify-center font-bold text-base">
+                        3
+                    </div>
+                    <h3 class="font-bold text-base">Analyse sémantique</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Laissez le moteur sémantique calculer les fréquences et croiser les thématiques entre verbatims.
+                    </p>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                    <div class="w-10 h-10 bg-sky-100 text-sky-700 rounded-xl flex items-center justify-center font-bold text-base">
+                        4
+                    </div>
+                    <h3 class="font-bold text-base">Exportation</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Générez votre rapport d'analyse final exportable en Excel/PDF pour intégrer directement dans votre thèse.
+                    </p>
+                </div>
+            </div>
+
+            <!-- FAQ Section -->
+            <div class="max-w-3xl mx-auto space-y-6 pt-6">
+                <h2 class="text-2xl font-bold text-center">Foire Aux Questions (FAQ)</h2>
+                
+                <div class="space-y-4">
+                    <!-- FAQ 1 -->
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <button onclick="toggleFaq(1)" class="w-full text-left p-5 font-semibold text-sm flex justify-between items-center focus:outline-none">
+                            <span>Mes données de santé/recherche sont-elles envoyées sur des serveurs externes ?</span>
+                            <i id="faq-icon-1" data-lucide="chevron-down" class="w-5 h-5 transition-transform text-slate-400"></i>
+                        </button>
+                        <div id="faq-answer-1" class="hidden px-5 pb-5 text-xs text-slate-600 border-t border-slate-100 pt-3 leading-relaxed">
+                            Non. Toutes les analyses sémantiques sont effectuées 100% en local sur votre appareil iOS/iPadOS ou chiffrées via votre compte iCloud personnel. Aucune donnée médicale ou verbatim n'est stockée sur nos serveurs.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 2 -->
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <button onclick="toggleFaq(2)" class="w-full text-left p-5 font-semibold text-sm flex justify-between items-center focus:outline-none">
+                            <span>Quels formats de fichiers puis-je importer dans SemantiQ ?</span>
+                            <i id="faq-icon-2" data-lucide="chevron-down" class="w-5 h-5 transition-transform text-slate-400"></i>
+                        </button>
+                        <div id="faq-answer-2" class="hidden px-5 pb-5 text-xs text-slate-600 border-t border-slate-100 pt-3 leading-relaxed">
+                            SemantiQ prend en charge le texte brut (.txt), Word (.docx), PDF ainsi que l'importation directe depuis les notes iOS ou le presse-papier.
+                        </div>
+                    </div>
+
+                    <!-- FAQ 3 -->
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <button onclick="toggleFaq(3)" class="w-full text-left p-5 font-semibold text-sm flex justify-between items-center focus:outline-none">
+                            <span>Comment exporter la grille d'analyse vers Excel ?</span>
+                            <i id="faq-icon-3" data-lucide="chevron-down" class="w-5 h-5 transition-transform text-slate-400"></i>
+                        </button>
+                        <div id="faq-answer-3" class="hidden px-5 pb-5 text-xs text-slate-600 border-t border-slate-100 pt-3 leading-relaxed">
+                            Dans l'onglet "Rapport", appuyez sur le bouton "Exporter" puis sélectionnez le format .XLSX ou .CSV. Vous obtiendrez un tableau croisé propre prêt pour votre thèse ou rapport de recherche.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- SECTION 3: POLITIQUE DE CONFIDENTIALITÉ   -->
+        <!-- ========================================== -->
+        <section id="content-privacy" class="tab-content hidden max-w-4xl mx-auto space-y-10">
+            <!-- Header -->
+            <div class="border-b border-slate-200 pb-6 space-y-2">
+                <span class="text-xs font-bold text-sky-600 tracking-wider uppercase">Conformité Apple App Store Guidelines (Sec. 5.1)</span>
+                <h1 class="text-3xl font-bold text-slate-900">Politique de Confidentialité</h1>
+                <p class="text-xs text-slate-400">Application : <strong>SemantiQ - Verbatims</strong> | Dernière mise à jour : Mai 2024</p>
+            </div>
+
+            <!-- Legal Content -->
+            <div class="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-8">
+                <p>
+                    La protection de vos données de recherche et données médicales est la priorité absolue de <strong>SemantiQ - Verbatims</strong>. Notre politique garantit une confidentialité totale conformément aux directives de révision d'Apple et au RGPD.
+                </p>
+
+                <!-- Summary Box -->
+                <div class="bg-sky-50 border border-sky-100 p-5 rounded-2xl space-y-2">
+                    <h3 class="font-bold text-sky-900 text-sm flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-sky-600"></i> Principes Fondamentaux de Confidentialité
+                    </h3>
+                    <ul class="list-disc list-inside text-sky-800 text-xs space-y-1">
+                        <li>Traitements 100% locaux sur votre appareil iOS.</li>
+                        <li>Aucun tracking ni profilage publicitaire (Aucun suivi ATT).</li>
+                        <li>Vos verbatims ne sont jamais revendus ni partagés à des tiers.</li>
+                    </ul>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-base font-bold text-slate-900">1. Traitement des Verbatims et Données Qualitatives</h2>
+                    <p>
+                        Tous les verbatims, transcriptions d'entretiens et codes thématiques saisis ou importés restent exclusivement enregistrés sur votre appareil local ou synchronisés via votre compte personnel Apple iCloud (CloudKit). L'éditeur n'a aucun accès à vos documents de recherche.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-base font-bold text-slate-900">2. Collecte de Données Techniques Minimales</h2>
+                    <p>
+                        Afin de garantir la stabilité de l'application, nous pouvons collecter des rapports de plantage anonymes fournis automatiquement par Apple App Store Connect. Ces rapports ne contiennent aucune donnée textuelle issue de vos verbatims.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-base font-bold text-slate-900">3. Partage de Données avec des Tiers</h2>
+                    <p>
+                        Aucune donnée personnelle ou verbatim n'est transmise, vendue ou louée à des régies publicitaires ou des entreprises tierces.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-base font-bold text-slate-900">4. Vos Droits & Suppression des Données</h2>
+                    <p>
+                        Vous gardez un contrôle absolu sur vos données. Vous pouvez à tout moment exporter vos travaux ou réinitialiser intégralement l'application via les réinitialisations de l'application.
+                    </p>
+                </div>
+
+                <div class="space-y-3">
+                    <h2 class="text-base font-bold text-slate-900">5. Contact pour la Confidentialité</h2>
+                    <p>
+                        Pour toute question relative à la protection des données ou à l'utilisation de SemantiQ - Verbatims :
+                    </p>
+                    <p class="font-semibold text-sky-600">support@semantiq-app.com</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Style Apple -->
+    <footer class="bg-slate-100 border-t border-slate-200 text-xs text-slate-500 py-10 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <div class="flex items-center space-x-2 font-bold text-slate-800 mb-2">
+                        <i data-lucide="brain-circuit" class="w-4 h-4 text-sky-600"></i>
+                        <span>SemantiQ - Verbatims</span>
+                    </div>
+                    <p class="text-slate-400">Solution iOS dédiée à l'analyse sémantique et qualitative pour chercheurs et médecins.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Navigation</h4>
+                    <ul class="space-y-1">
+                        <li><button onclick="switchTab('marketing')" class="hover:underline">Présentation & Offre</button></li>
+                        <li><button onclick="switchTab('guide')" class="hover:underline">Mode d'emploi & FAQ</button></li>
+                        <li><button onclick="switchTab('privacy')" class="hover:underline">Politique de Confidentialité</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Conformité App Store</h4>
+                    <p class="text-slate-400">Cette page respecte scrupuleusement les exigences de l'Apple Developer Program pour l'hébergement de la Privacy Policy.</p>
+                </div>
+            </div>
+            <div class="border-t border-slate-200 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-400">
+                <p>© 2026 SemantiQ App. Tous droits réservés.</p>
+                <div class="flex space-x-4">
+                    <span class="hover:text-slate-600 cursor-pointer" onclick="switchTab('privacy')">Confidentialité</span>
+                    <span>•</span>
+                    <span class="hover:text-slate-600 cursor-pointer">Support</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Switch Tab Navigation Logic
+        function switchTab(tabName) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.add('hidden'));
+
+            const navButtons = document.querySelectorAll('.tab-btn');
+            navButtons.forEach(btn => {
+                btn.classList.remove('active', 'text-sky-600');
+                btn.classList.add('text-slate-500');
+            });
+
+            const activeContent = document.getElementById('content-' + tabName);
+            if (activeContent) {
+                activeContent.classList.remove('hidden');
+            }
+
+            const activeNavBtn = document.getElementById('tab-' + tabName);
+            if (activeNavBtn) {
+                activeNavBtn.classList.add('active');
+                activeNavBtn.classList.remove('text-slate-500');
+            }
+
+            document.getElementById('mobile-menu').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Toggle FAQ Accordion
+        function toggleFaq(index) {
+            const answer = document.getElementById('faq-answer-' + index);
+            const icon = document.getElementById('faq-icon-' + index);
+            
+            if (answer.classList.contains('hidden')) {
+                answer.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                answer.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Mobile Menu Toggle Logic
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+    </script>
+</body>
+</html>
