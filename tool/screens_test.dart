@@ -22,7 +22,10 @@ import 'package:semantiq/sample_study.dart';
 import 'package:semantiq/services/settings.dart';
 import 'package:semantiq/ui/app_scope.dart';
 import 'package:semantiq/ui/codebook_screen.dart';
+import 'package:semantiq/engine/factorial.dart';
 import 'package:semantiq/ui/coding_tab.dart';
+import 'package:semantiq/ui/corpus_map_screen.dart';
+import 'package:semantiq/ui/factor_view.dart';
 import 'package:semantiq/ui/home_screen.dart';
 import 'package:semantiq/ui/illustrations.dart';
 import 'package:semantiq/ui/results_tabs.dart';
@@ -135,6 +138,32 @@ void main() {
       );
     }
 
+    Widget lexical() {
+      final corpus = analyze(sampleStudy.map((s) => s.text).join('\n'));
+      return DefaultTabController(
+        length: sections.length,
+        initialIndex: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Corpus d\'exemple'),
+            bottom: const SectionTabBar(),
+          ),
+          body: Backdrop(
+            variant: 2,
+            child: CorrelationsTab(analysis: corpus, onWordTap: (_) {}),
+          ),
+        ),
+      );
+    }
+
+    Future<void> factorMap(String name, Brightness brightness) async {
+      await show(name, lexical(), InterviewStore.memory(),
+          brightness: brightness);
+      await tester.tap(find.text('Carte factorielle'));
+      await settle();
+      await shoot(name);
+    }
+
     debugDisableShadows = false;
     try {
       final empty = InterviewStore.memory();
@@ -189,6 +218,39 @@ void main() {
       await show('codage_sombre', coding(dark), dark,
           brightness: Brightness.dark);
       await shoot('13_codage_sombre');
+
+      await factorMap('14_carte_factorielle', Brightness.light);
+      await tester.dragFrom(const Offset(195, 800), const Offset(0, -470));
+      await settle();
+      await shoot('15_oppositions');
+      await tester.dragFrom(const Offset(195, 700), const Offset(0, -520));
+      await settle();
+      await shoot('15b_eboulis');
+      await tester.dragFrom(const Offset(195, 700), const Offset(0, -560));
+      await settle();
+      await shoot('15c_solidite');
+      await factorMap('16_carte_factorielle_sombre', Brightness.dark);
+
+      Widget corpusMap() => Scaffold(
+            appBar: AppBar(title: const Text('Carte du corpus')),
+            body: Backdrop(
+              variant: 2,
+              child: CorpusMapView(
+                corpus: buildCorpusMap([
+                  for (final s in sampleStudy)
+                    (id: s.title, title: s.title, text: s.text),
+                ], const AnalysisOptions()),
+              ),
+            ),
+          );
+      await show('corpus', corpusMap(), InterviewStore.memory());
+      await shoot('17_carte_du_corpus');
+      await tester.dragFrom(const Offset(195, 800), const Offset(0, -520));
+      await settle();
+      await shoot('18_carte_du_corpus_oppositions');
+      await show('corpus_sombre', corpusMap(), InterviewStore.memory(),
+          brightness: Brightness.dark);
+      await shoot('19_carte_du_corpus_sombre');
 
       await tester.pumpWidget(const SizedBox());
     } finally {

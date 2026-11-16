@@ -6,8 +6,11 @@ import 'package:semantiq/engine/meeting.dart';
 import 'package:semantiq/sample_interview.dart';
 import 'package:semantiq/sample_meeting.dart';
 import 'package:semantiq/sample_study.dart';
+import 'package:semantiq/engine/factorial.dart';
 import 'package:semantiq/ui/codebook_screen.dart';
+import 'package:semantiq/ui/corpus_map_screen.dart';
 import 'package:semantiq/ui/coding_tab.dart';
+import 'package:semantiq/ui/factor_view.dart';
 import 'package:semantiq/ui/illustrations.dart';
 import 'package:semantiq/ui/minutes_tab.dart';
 import 'package:semantiq/ui/network_view.dart';
@@ -89,6 +92,40 @@ void main() {
       testWidgets('Texte', (tester) async {
         await pumpIn(tester, TextTab(analysis: analysis), brightness: b);
         expect(find.text('P1'), findsWidgets);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Carte factorielle', (tester) async {
+        final corpus = analyze(sampleStudy.map((s) => s.text).join('\n'));
+        await pumpIn(tester,
+            FactorTab(analysis: corpus, onWordTap: (_) {}),
+            brightness: b);
+        expect(find.text('Carte factorielle'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        // Texte trop court : un message, pas une carte vide.
+        await pumpIn(
+            tester,
+            FactorTab(analysis: analyze('P1 : Bonjour.'), onWordTap: (_) {}),
+            brightness: b);
+        expect(find.text('Texte trop court pour une carte'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Carte du corpus', (tester) async {
+        final corpus = buildCorpusMap([
+          for (final s in sampleStudy)
+            (id: s.title, title: s.title, text: s.text),
+        ], const AnalysisOptions());
+        await pumpIn(tester, CorpusMapView(corpus: corpus), brightness: b);
+        expect(find.text('Mots et entretiens'), findsOneWidget);
+        await tester.dragFrom(const Offset(195, 800), const Offset(0, -450));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Exemple 2 – Mme B., 58 ans'), findsWidgets);
+        expect(tester.takeException(), isNull);
+
+        await pumpIn(tester, const CorpusMapView(corpus: null), brightness: b);
+        expect(find.text('Corpus trop mince pour une carte'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
 
@@ -225,6 +262,34 @@ void main() {
       WordSheet(analysis: analysis, wordKey: key, onIgnore: (_) {}),
     );
     expect(find.text('Dans le texte'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Corrélations : du réseau à la carte', (tester) async {
+    final corpus = analyze(sampleStudy.map((s) => s.text).join('\n'));
+    String? opened;
+    await pumpIn(tester,
+        CorrelationsTab(analysis: corpus, onWordTap: (k) => opened = k));
+    expect(find.text('Réseau des mots'), findsOneWidget);
+    await tester.tap(find.text('Carte factorielle'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(find.text('Réseau des mots'), findsNothing);
+    // On fait défiler sous la carte : sur la carte, le doigt la déplace.
+    await tester.dragFrom(const Offset(195, 800), const Offset(0, -400));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Axe horizontal'), findsOneWidget);
+    expect(find.text('À gauche'), findsOneWidget);
+    expect(find.text('À droite'), findsOneWidget);
+    await tester.dragFrom(const Offset(195, 700), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Éboulis des valeurs propres'), findsOneWidget);
+    expect(find.textContaining('La courbe se casse après'), findsOneWidget);
+    await tester.dragFrom(const Offset(195, 700), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Solidité du modèle'), findsOneWidget);
+    expect(find.textContaining('Khi² = '), findsOneWidget);
+    expect(opened, isNull);
     expect(tester.takeException(), isNull);
   });
 

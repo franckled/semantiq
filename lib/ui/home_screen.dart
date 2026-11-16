@@ -8,6 +8,7 @@ import '../sample_study.dart';
 import 'app_scope.dart';
 import 'codebook_screen.dart';
 import 'common.dart';
+import 'corpus_map_screen.dart';
 import 'editor_screen.dart';
 import 'illustrations.dart';
 import 'motion.dart';
@@ -64,6 +65,21 @@ class HomeScreen extends StatelessWidget {
                                 MaterialPageRoute<void>(
                                     builder: (_) =>
                                         CodebookScreen(store: store)),
+                              ),
+                            ),
+                          ),
+                        ],
+                        // Une carte demande au moins trois entretiens.
+                        if (items.where((i) => !i.isMeeting).length >= 3) ...[
+                          const SizedBox(height: 12),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 300),
+                            child: _CorpusTile(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        CorpusMapScreen(store: store)),
                               ),
                             ),
                           ),
@@ -555,6 +571,51 @@ class _RecordTile extends StatelessWidget {
               ),
             ),
             const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Accès à la carte factorielle du corpus.
+class _CorpusTile extends StatelessWidget {
+  const _CorpusTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tones = Tones.of(context);
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: tones.raised,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: tones.rule),
+        ),
+        child: Row(
+          children: [
+            const IconBadge(Icons.scatter_plot_rounded,
+                accent: Accent.mint, size: 52),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Carte du corpus', style: t.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Mots et entretiens : proximités, oppositions',
+                    style: t.bodySmall?.copyWith(color: tones.muted),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded, color: tones.muted),
           ],
         ),
       ),

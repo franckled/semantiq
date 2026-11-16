@@ -80,11 +80,16 @@ class NetworkTab extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        layout.families[f].take(3).join(' · '),
-                        style: t.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Accent.at(f).onSoft(context),
+                      // Trois mots longs peuvent dépasser la largeur.
+                      Flexible(
+                        child: Text(
+                          layout.families[f].take(3).join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: Accent.at(f).onSoft(context),
+                          ),
                         ),
                       ),
                     ],

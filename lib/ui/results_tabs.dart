@@ -19,9 +19,9 @@ typedef Section = ({String label, IconData icon, Accent accent});
 const List<Section> sections = [
   (label: 'Résumé', icon: Icons.auto_awesome_rounded, accent: Accent.violet),
   (label: 'Codage', icon: Icons.sell_rounded, accent: Accent.rose),
-  (label: 'Phrases clés', icon: Icons.format_quote_rounded, accent: Accent.coral),
   (label: 'Mots', icon: Icons.bar_chart_rounded, accent: Accent.sun),
   (label: 'Corrélations', icon: Icons.hub_rounded, accent: Accent.mint),
+  (label: 'Phrases clés', icon: Icons.format_quote_rounded, accent: Accent.coral),
   (label: 'Texte', icon: Icons.article_rounded, accent: Accent.sky),
 ];
 
@@ -85,11 +85,18 @@ class _SectionTabBarState extends State<SectionTabBar> {
   @override
   Widget build(BuildContext context) {
     final c = DefaultTabController.of(context);
+    // Le bord droit s'estompe : il reste des rubriques à faire défiler.
     return SizedBox(
       height: 62,
-      child: SingleChildScrollView(
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (rect) => const LinearGradient(
+          colors: [Colors.white, Colors.white, Colors.transparent],
+          stops: [0, 0.9, 1],
+        ).createShader(rect),
+        child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 6, 28, 12),
         child: AnimatedBuilder(
           animation: c.animation!,
           builder: (context, _) {
@@ -111,6 +118,7 @@ class _SectionTabBarState extends State<SectionTabBar> {
               ],
             );
           },
+        ),
         ),
       ),
     );
