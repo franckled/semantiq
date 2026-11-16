@@ -271,7 +271,9 @@ class CodePill extends StatelessWidget {
     final bg = selected ? accent.deep : accent.soft(context);
     final fg = selected ? Colors.white : accent.onSoft(context);
     final pill = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 300),
+      // Dans une feuille de choix, un long libellé passe à la ligne plutôt
+      // que d'être coupé.
+      constraints: BoxConstraints(maxWidth: large ? double.infinity : 300),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: large ? 14 : 10,
@@ -295,7 +297,7 @@ class CodePill extends StatelessWidget {
             Flexible(
               child: Text(
                 code.label,
-                overflow: TextOverflow.ellipsis,
+                overflow: large ? null : TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: fontFamily,
                   fontWeight: FontWeight.w700,

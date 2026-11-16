@@ -379,7 +379,7 @@ class _ActionTiles extends StatelessWidget {
             delay: const Duration(milliseconds: 120),
             child: _ActionTile(
               title: 'Importer\nun audio',
-              subtitle: 'Mémo vocal, dictaphone',
+              subtitle: 'Mémo vocal',
               colors: const [Palette.coral, Color(0xFFFF9466)],
               art: TileArtKind.audio,
               onTap: onAudio,
@@ -473,6 +473,8 @@ class _ActionTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: fontFamily,
                 fontSize: 13,
@@ -541,7 +543,7 @@ class _RecordTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Un entretien ou une réunion, en direct',
+                    'Entretien ou réunion',
                     style: TextStyle(
                       fontFamily: fontFamily,
                       fontSize: 13,
