@@ -115,7 +115,7 @@ void main() {
         expect(w.x.isFinite && w.y.isFinite, isTrue);
         expect(corpus.word(w.key), isNotNull);
       }
-      // Le barycentre pondéré des mots est à l'origine : propriété de l'AFC.
+      // Les contributions des mots à un axe se partagent toute son inertie.
       expect(
           map.words.fold<double>(0, (s, w) => s + w.contribX), closeTo(1, 1e-9));
       // Même objet au second appel : calculée une seule fois.
