@@ -5,6 +5,8 @@
 //
 // Les images sont écrites dans build/screens/. La CI les dépose dans la
 // branche ci-screens.
+//
+// ignore_for_file: invalid_use_of_visible_for_testing_member
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
