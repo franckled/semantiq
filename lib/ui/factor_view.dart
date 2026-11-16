@@ -388,9 +388,9 @@ class FactorScree extends StatelessWidget {
           'axe${spectrum.length > 1 ? 's' : ''} : il n\'y a pas de coude à '
           'chercher. La carte en montre deux, soit $both de l\'inertie.';
     } else if (elbow <= 2) {
-      verdict = 'La courbe se casse après l\'axe $elbow : les deux axes de '
-          'la carte suffisent à lire la structure principale. Ils '
-          'restituent $both de l\'inertie.';
+      verdict = 'La courbe se casse après l\'axe $elbow : selon ce critère, '
+          'les deux axes de la carte suffisent à lire la structure '
+          'principale. Ils restituent $both de l\'inertie.';
     } else {
       verdict = 'La courbe se casse après l\'axe $elbow : il faudrait lire '
           '$elbow axes, et la carte n\'en montre que deux ($both de '
