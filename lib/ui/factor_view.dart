@@ -207,6 +207,7 @@ class FactorTab extends StatelessWidget {
           onWordTap: onWordTap,
         ),
         FactorScree(map: map),
+        FactorReliability(map: map, onWordTap: onWordTap),
         const SizedBox(height: 16),
         TintCard(
           accent: Accent.mint,
@@ -535,6 +536,170 @@ class _ScreeBar extends StatelessWidget {
   }
 }
 
+/// Nombre décimal à la française (virgule), avec [digits] décimales.
+String _decimal(double x, int digits) =>
+    x.toStringAsFixed(digits).replaceAll('.', ',');
+
+/// Valeur p lisible : « p < 0,001 » ou « p = 0,042 ».
+String formatPValue(double p) =>
+    p < 0.001 ? 'p < 0,001' : 'p = ${_decimal(p, 3)}';
+
+/// Solidité de la carte : test du khi-deux d'indépendance du tableau et
+/// qualité de représentation (cos²) de chaque mot dans le plan.
+class FactorReliability extends StatelessWidget {
+  const FactorReliability({
+    super.key,
+    required this.map,
+    required this.onWordTap,
+  });
+
+  final FactorMap map;
+  final void Function(String key) onWordTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tones = Tones.of(context);
+    final significant = map.pValue < 0.05;
+    final accent = significant ? Accent.mint : Accent.coral;
+    final poor = map.poorlyShown;
+    final good = map.words.length - poor.length;
+    final stats = 'χ² = ${_decimal(map.chi2, 1)} · ddl = ${map.degrees} · '
+        '${formatPValue(map.pValue)}';
+
+    Widget heading(IconData icon, String text, Color color) => Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: t.titleSmall)),
+          ],
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionTitle(
+          'Solidité du modèle',
+          subtitle: 'La carte décrit-elle autre chose que du hasard ? '
+              'Chaque mot y est-il bien placé ?',
+          accent: Accent.violet,
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                heading(
+                  significant
+                      ? Icons.check_circle_rounded
+                      : Icons.help_rounded,
+                  'Test du khi-deux d\'indépendance',
+                  accent.color,
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: accent.soft(context),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    stats,
+                    style: TextStyle(
+                      fontFamily: fontFamily,
+                      fontWeight: FontWeight.w800,
+                      color: accent.onSoft(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  significant
+                      ? 'Les mots ne se répartissent pas au hasard entre '
+                          '${map.segmentSize == 0 ? 'les entretiens' : 'les passages'} : '
+                          'la carte décrit une structure réelle du '
+                          'vocabulaire.'
+                      : 'L\'écart à une répartition au hasard n\'est pas '
+                          'significatif : la carte peut refléter du bruit. '
+                          'À lire avec prudence, ou avec plus de texte.',
+                  style: t.bodyMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Indicatif : les mots d\'un même passage ne sont pas des '
+                  'tirages indépendants'
+                  '${map.smallExpected > 0.2 ? ', et ${factorPercent(map.smallExpected)} des effectifs attendus sont inférieurs à 5, ce qui rend la valeur p approximative' : ''}.',
+                  style: t.bodySmall?.copyWith(color: tones.muted),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Divider(height: 1, color: tones.rule),
+                ),
+                heading(
+                  Icons.center_focus_strong_rounded,
+                  'Qualité de représentation (cos²)',
+                  Palette.violet,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  poor.isEmpty
+                      ? 'Les ${map.words.length} mots sont bien représentés '
+                          'dans le plan : leur position est fiable.'
+                      : '$good mots sur ${map.words.length} sont bien '
+                          'représentés dans le plan. Les ${poor.length} '
+                          'autres (cos² < ${_decimal(FactorMap.faintBelow, 1)}) '
+                          'apparaissent pâles sur la carte : leur position '
+                          'dépend surtout d\'axes qu\'elle ne montre pas.',
+                  style: t.bodyMedium,
+                ),
+                if (poor.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final w in poor)
+                        Pressable(
+                          onTap: () => onWordTap(w.key),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: tones.rule),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${w.label} · ${_decimal(w.quality, 2)}',
+                              style: TextStyle(
+                                fontFamily: fontFamily,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: tones.muted,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  'Le cos² mesure la part de la position d\'un mot que le '
+                  'plan restitue : 1 = parfaitement, 0 = pas du tout.',
+                  style: t.bodySmall?.copyWith(color: tones.muted),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// La carte elle-même : mots en pastilles rondes, entretiens en carrés.
 class FactorPlot extends StatefulWidget {
   const FactorPlot({
@@ -618,6 +783,7 @@ class _Mark {
     required this.label,
     this.key,
     this.document = false,
+    this.faint = false,
   });
 
   final Offset at;
@@ -631,6 +797,9 @@ class _Mark {
   /// Clé du mot à ouvrir quand on touche le repère ; null pour un entretien.
   final String? key;
   final bool document;
+
+  /// Mot mal représenté dans le plan : dessiné pâle.
+  bool faint;
 
   TextPainter? text;
   Offset textAt = Offset.zero;
@@ -709,9 +878,11 @@ class _PlotLayout {
           break;
         }
       }
+      final faint = w.quality < FactorMap.faintBelow;
       if (same != null) {
         same.label.add(w.label);
         same.radius = math.max(same.radius, radius);
+        same.faint = same.faint && faint;
       } else {
         marks.add(_Mark(
           at: at,
@@ -720,6 +891,7 @@ class _PlotLayout {
           textColor: textOf(w),
           label: [w.label],
           key: w.key,
+          faint: faint,
         ));
       }
     }
@@ -737,7 +909,9 @@ class _PlotLayout {
             fontFamily: fontFamily,
             fontSize: 12,
             fontWeight: m.document ? FontWeight.w800 : FontWeight.w700,
-            color: m.textColor,
+            color: m.faint
+                ? m.textColor.withValues(alpha: 0.45)
+                : m.textColor,
           ),
         ),
         maxLines: 1,
@@ -834,8 +1008,8 @@ class _PlotPainter extends CustomPainter {
         canvas.drawRRect(square, Paint()..color = m.color);
         canvas.drawRRect(square, ring);
       } else {
-        canvas.drawCircle(
-            p, m.radius, Paint()..color = m.color.withValues(alpha: 0.9));
+        canvas.drawCircle(p, m.radius,
+            Paint()..color = m.color.withValues(alpha: m.faint ? 0.3 : 0.9));
         canvas.drawCircle(p, m.radius, ring);
       }
     }

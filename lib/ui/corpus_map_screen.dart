@@ -149,7 +149,7 @@ class CorpusMapView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
           child: Text(
             'Carrés : les entretiens · ronds : les mots, plus gros quand ils '
-            'sont fréquents\n'
+            'sont fréquents, pâles quand ils sont mal représentés\n'
             'Axe horizontal : ${factorPercent(map.shareX)} de l\'inertie · '
             'axe vertical : ${factorPercent(map.shareY)}',
             style: t.bodySmall?.copyWith(color: tones.muted),
@@ -184,6 +184,7 @@ class CorpusMapView extends StatelessWidget {
           onWordTap: open,
         ),
         FactorScree(map: map),
+        FactorReliability(map: map, onWordTap: open),
         const SizedBox(height: 16),
         TintCard(
           accent: Accent.mint,
@@ -210,8 +211,12 @@ void _showWord(BuildContext context, CorpusMap corpus, String key) {
   final counts = corpus.counts[key];
   if (counts == null) return;
   var label = key;
+  double? quality;
   for (final w in corpus.map.words) {
-    if (w.key == key) label = w.label;
+    if (w.key == key) {
+      label = w.label;
+      quality = w.quality;
+    }
   }
   final total = counts.fold<int>(0, (a, b) => a + b);
   final most = counts.fold<int>(1, (a, b) => b > a ? b : a);
@@ -233,9 +238,19 @@ void _showWord(BuildContext context, CorpusMap corpus, String key) {
               Text(label, style: t.headlineMedium),
               const SizedBox(height: 4),
               Text(
-                '$total occurrence${total > 1 ? 's' : ''} dans le corpus',
+                '$total occurrence${total > 1 ? 's' : ''} dans le corpus'
+                '${quality == null ? '' : ' · cos² ${quality.toStringAsFixed(2).replaceAll('.', ',')}'}',
                 style: t.bodyMedium?.copyWith(color: tones.muted),
               ),
+              if (quality != null && quality < FactorMap.faintBelow)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Mot mal représenté sur la carte : sa position y est '
+                    'peu fiable.',
+                    style: t.bodySmall?.copyWith(color: tones.danger),
+                  ),
+                ),
               const SizedBox(height: 16),
               for (var j = 0; j < corpus.documents.length; j++)
                 Padding(

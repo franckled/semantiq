@@ -72,6 +72,24 @@ void main() {
       expect(elbowAxes(ca.spectrum), 1);
     });
 
+    test('test du khi-deux', () {
+      final ca = correspondence(smoking)!;
+      expect(ca.total, 193);
+      expect(ca.chi2, closeTo(16.4416, 1e-3));
+      expect(ca.degrees, 12);
+      expect(ca.pValue, closeTo(0.1718, 1e-4));
+      // 7 cases sur 20 ont un effectif attendu inférieur à 5.
+      expect(ca.smallExpected, closeTo(0.35, 1e-12));
+    });
+
+    test('loi du khi-deux', () {
+      expect(chiSquarePValue(3.841458820694124, 1), closeTo(0.05, 1e-9));
+      expect(chiSquarePValue(100, 78), closeTo(0.04737, 1e-5));
+      expect(chiSquarePValue(0.5, 3), closeTo(0.91889, 1e-5));
+      expect(chiSquarePValue(0, 4), 1);
+      expect(chiSquarePValue(1e4, 4), closeTo(0, 1e-12));
+    });
+
     test('critère du coude', () {
       expect(elbowAxes([5, 4, 3, 1, 0.9, 0.8]), 3);
       expect(elbowAxes([10, 9, 2, 1.5, 1]), 2);
@@ -150,6 +168,18 @@ void main() {
       }
       expect(map.spectrum.reduce((a, b) => a + b), closeTo(1, 1e-9));
       expect(map.elbow, inInclusiveRange(1, map.spectrum.length - 2));
+      // Test du khi-deux sur le tableau mots × segments.
+      expect(map.degrees, (map.words.length - 1) * (map.segments - 1));
+      expect(map.chi2, greaterThan(0));
+      expect(map.pValue, inInclusiveRange(0, 1));
+      // Mots mal représentés : triés, tous sous le seuil.
+      final poor = map.poorlyShown;
+      for (var i = 0; i < poor.length; i++) {
+        expect(poor[i].quality, lessThan(FactorMap.faintBelow));
+        if (i > 0) {
+          expect(poor[i].quality, greaterThanOrEqualTo(poor[i - 1].quality));
+        }
+      }
       // Même objet au second appel : calculée une seule fois.
       expect(FactorMap.of(corpus), same(map));
     });
@@ -195,6 +225,10 @@ void main() {
       expect(corpus.map.shareX + corpus.map.shareY, closeTo(1, 1e-6));
       expect(corpus.map.spectrum, hasLength(2));
       expect(corpus.map.elbow, isNull);
+      // Deux axes portent tout : chaque mot est parfaitement représenté.
+      expect(corpus.map.poorlyShown, isEmpty);
+      expect(corpus.map.degrees, (corpus.map.words.length - 1) * 2);
+      expect(corpus.map.pValue, inInclusiveRange(0, 1));
       for (final w in corpus.map.words) {
         final counts = corpus.counts[w.key]!;
         expect(counts, hasLength(3));

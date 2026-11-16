@@ -58,6 +58,8 @@ import 'analysis.dart';
 /// Résultat d'une analyse factorielle des correspondances.
 class Correspondence {
   const Correspondence({
+    required this.total,
+    required this.smallExpected,
     required this.inertia,
     required this.eigenvalues,
     required this.spectrum,
@@ -66,6 +68,14 @@ class Correspondence {
     required this.contributions,
     required this.quality,
   });
+
+  /// Effectif total du tableau.
+  final double total;
+
+  /// Part des cases dont l'effectif attendu sous l'indépendance est
+  /// inférieur à 5 (règle de Cochran : au-delà de 20 %, la loi du
+  /// khi-deux n'est qu'une approximation grossière).
+  final double smallExpected;
 
   /// Inertie totale du tableau (khi-deux divisé par l'effectif).
   final double inertia;
@@ -92,6 +102,90 @@ class Correspondence {
 
   /// Part de l'inertie totale portée par l'axe [k].
   double share(int k) => inertia <= 0 ? 0 : eigenvalues[k] / inertia;
+
+  /// Statistique du khi-deux d'indépendance du tableau.
+  double get chi2 => total * inertia;
+
+  /// Degrés de liberté : (lignes − 1) × (colonnes − 1).
+  int get degrees => (rows.length - 1) * (columns.length - 1);
+
+  /// Probabilité d'observer un écart à l'indépendance au moins aussi grand
+  /// si les lignes et les colonnes étaient indépendantes.
+  double get pValue => chiSquarePValue(chi2, degrees);
+}
+
+/// Probabilité qu'une variable du khi-deux à [degrees] degrés de liberté
+/// dépasse [statistic].
+double chiSquarePValue(double statistic, int degrees) {
+  if (degrees <= 0) return 1;
+  if (statistic <= 0) return 1;
+  return upperGamma(degrees / 2, statistic / 2);
+}
+
+/// Fonction gamma incomplète supérieure régularisée Q(a, x), par la série
+/// (x < a + 1) ou la fraction continue de Lentz (au-delà).
+double upperGamma(double a, double x) {
+  if (x <= 0) return 1;
+  final logPrefix = -x + a * math.log(x) - _logGamma(a);
+  if (x < a + 1) {
+    var term = 1 / a;
+    var sum = term;
+    var ap = a;
+    for (var n = 0; n < 1000; n++) {
+      ap += 1;
+      term *= x / ap;
+      sum += term;
+      if (term.abs() < sum.abs() * 1e-15) break;
+    }
+    return (1 - sum * math.exp(logPrefix)).clamp(0.0, 1.0);
+  }
+  const tiny = 1e-300;
+  var b = x + 1 - a;
+  var c = 1 / tiny;
+  var d = 1 / b;
+  var h = d;
+  for (var i = 1; i < 1000; i++) {
+    final an = -i * (i - a);
+    b += 2;
+    d = an * d + b;
+    if (d.abs() < tiny) d = tiny;
+    c = b + an / c;
+    if (c.abs() < tiny) c = tiny;
+    d = 1 / d;
+    final delta = d * c;
+    h *= delta;
+    if ((delta - 1).abs() < 1e-15) break;
+  }
+  return (math.exp(logPrefix) * h).clamp(0.0, 1.0);
+}
+
+/// Logarithme de la fonction gamma (approximation de Lanczos).
+double _logGamma(double x) {
+  const g = 7.0;
+  const coef = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7,
+  ];
+  if (x < 0.5) {
+    return math.log(math.pi / math.sin(math.pi * x)) - _logGamma(1 - x);
+  }
+  final z = x - 1;
+  var sum = coef[0];
+  for (var i = 1; i < coef.length; i++) {
+    sum += coef[i] / (z + i);
+  }
+  final t = z + g + 0.5;
+  return 0.5 * math.log(2 * math.pi) +
+      (z + 0.5) * math.log(t) -
+      t +
+      math.log(sum);
 }
 
 /// Analyse factorielle des correspondances du tableau de contingence
@@ -192,8 +286,16 @@ Correspondence? correspondence(List<List<double>> table, {int axes = 2}) {
     quality[i] = math.min(1.0, shown / distance);
   }
 
+  var small = 0;
+  for (var i = 0; i < rowCount; i++) {
+    for (var j = 0; j < colCount; j++) {
+      if (r[i] * c[j] * total < 5) small++;
+    }
+  }
   final first = eigen.values[order.first];
   return Correspondence(
+    total: total,
+    smallExpected: small / (rowCount * colCount),
     inertia: inertia,
     eigenvalues: values,
     spectrum: [
@@ -278,6 +380,10 @@ class FactorMap {
     required this.shareY,
     required this.inertia,
     this.spectrum = const [],
+    this.chi2 = 0,
+    this.degrees = 0,
+    this.pValue = 1,
+    this.smallExpected = 0,
   });
 
   final List<FactorWord> words;
@@ -296,6 +402,21 @@ class FactorMap {
   /// Éboulis : part de l'inertie portée par chaque axe du tableau, du
   /// premier au dernier (les deux premiers sont ceux de la carte).
   final List<double> spectrum;
+
+  /// Test du khi-deux d'indépendance du tableau : statistique, degrés de
+  /// liberté, valeur p, et part des effectifs attendus inférieurs à 5.
+  final double chi2;
+  final int degrees;
+  final double pValue;
+  final double smallExpected;
+
+  /// Seuil de cos² sous lequel un mot est dit mal représenté.
+  static const faintBelow = 0.3;
+
+  /// Mots mal représentés dans le plan, du moins au mieux représenté.
+  List<FactorWord> get poorlyShown =>
+      [for (final w in words) if (w.quality < faintBelow) w]
+        ..sort((a, b) => a.quality.compareTo(b.quality));
 
   /// Nombre d'axes que le critère du coude invite à retenir, ou null si
   /// le tableau en porte trop peu pour chercher un coude.
@@ -416,6 +537,10 @@ FactorMap? buildFactorMap(Analysis a, {int maxWords = 40}) {
     shareY: ca.share(1),
     inertia: ca.inertia,
     spectrum: [for (final v in ca.spectrum) v / ca.inertia],
+    chi2: ca.chi2,
+    degrees: ca.degrees,
+    pValue: ca.pValue,
+    smallExpected: ca.smallExpected,
   );
 }
 
@@ -553,6 +678,10 @@ CorpusMap? buildCorpusMap(
       shareY: ca.share(1),
       inertia: ca.inertia,
       spectrum: [for (final v in ca.spectrum) v / ca.inertia],
+      chi2: ca.chi2,
+      degrees: ca.degrees,
+      pValue: ca.pValue,
+      smallExpected: ca.smallExpected,
     ),
     documents: [
       for (var c = 0; c < kept.length; c++)

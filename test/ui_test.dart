@@ -285,6 +285,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Éboulis des valeurs propres'), findsOneWidget);
     expect(find.textContaining('La courbe se casse après'), findsOneWidget);
+    await tester.dragFrom(const Offset(195, 700), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Solidité du modèle'), findsOneWidget);
+    expect(find.textContaining('χ² = '), findsOneWidget);
     expect(opened, isNull);
     expect(tester.takeException(), isNull);
   });
