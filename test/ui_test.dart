@@ -6,7 +6,9 @@ import 'package:semantiq/engine/meeting.dart';
 import 'package:semantiq/sample_interview.dart';
 import 'package:semantiq/sample_meeting.dart';
 import 'package:semantiq/sample_study.dart';
+import 'package:semantiq/engine/factorial.dart';
 import 'package:semantiq/ui/codebook_screen.dart';
+import 'package:semantiq/ui/corpus_map_screen.dart';
 import 'package:semantiq/ui/coding_tab.dart';
 import 'package:semantiq/ui/factor_view.dart';
 import 'package:semantiq/ui/illustrations.dart';
@@ -107,6 +109,23 @@ void main() {
             FactorTab(analysis: analyze('P1 : Bonjour.'), onWordTap: (_) {}),
             brightness: b);
         expect(find.text('Texte trop court pour une carte'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Carte du corpus', (tester) async {
+        final corpus = buildCorpusMap([
+          for (final s in sampleStudy)
+            (id: s.title, title: s.title, text: s.text),
+        ], const AnalysisOptions());
+        await pumpIn(tester, CorpusMapView(corpus: corpus), brightness: b);
+        expect(find.text('Mots et entretiens'), findsOneWidget);
+        await tester.dragFrom(const Offset(195, 800), const Offset(0, -450));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Exemple 2 – Mme B., 58 ans'), findsWidgets);
+        expect(tester.takeException(), isNull);
+
+        await pumpIn(tester, const CorpusMapView(corpus: null), brightness: b);
+        expect(find.text('Corpus trop mince pour une carte'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
 

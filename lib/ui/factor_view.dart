@@ -120,7 +120,8 @@ class _ModeSwitch extends StatelessWidget {
   }
 }
 
-String _percent(double share) => '${(share * 100).round()} %';
+/// Part d'inertie en pourcentage arrondi.
+String factorPercent(double share) => '${(share * 100).round()} %';
 
 /// Teinte d'un mot selon le quadrant de la carte où il tombe.
 Accent _quadrant(FactorWord w) => w.x >= 0
@@ -155,7 +156,7 @@ class FactorTab extends StatelessWidget {
         ],
       );
     }
-    final both = _percent(map.shareX + map.shareY);
+    final both = factorPercent(map.shareX + map.shareY);
     return ListView(
       padding: pad,
       children: [
@@ -169,15 +170,15 @@ class FactorTab extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             child: AspectRatio(
               aspectRatio: 1,
-              child: _Plot(map: map, onWordTap: onWordTap),
+              child: FactorPlot(map: map, onWordTap: onWordTap),
             ),
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
           child: Text(
-            'Axe horizontal : ${_percent(map.shareX)} de l\'inertie · '
-            'axe vertical : ${_percent(map.shareY)}',
+            'Axe horizontal : ${factorPercent(map.shareX)} de l\'inertie · '
+            'axe vertical : ${factorPercent(map.shareY)}',
             style: t.bodySmall?.copyWith(color: tones.muted),
           ),
         ),
@@ -186,7 +187,7 @@ class FactorTab extends StatelessWidget {
           subtitle: 'Les mots qui pèsent le plus de chaque côté d\'un axe',
           accent: Accent.violet,
         ),
-        _AxisCard(
+        FactorAxisCard(
           title: 'Axe horizontal',
           share: map.shareX,
           lowLabel: 'À gauche',
@@ -196,7 +197,7 @@ class FactorTab extends StatelessWidget {
           onWordTap: onWordTap,
         ),
         const SizedBox(height: 12),
-        _AxisCard(
+        FactorAxisCard(
           title: 'Axe vertical',
           share: map.shareY,
           lowLabel: 'En bas',
@@ -225,8 +226,9 @@ class FactorTab extends StatelessWidget {
   }
 }
 
-class _AxisCard extends StatelessWidget {
-  const _AxisCard({
+/// Les mots (et, pour un corpus, les entretiens) de chaque côté d'un axe.
+class FactorAxisCard extends StatelessWidget {
+  const FactorAxisCard({
     required this.title,
     required this.share,
     required this.lowLabel,
@@ -234,6 +236,8 @@ class _AxisCard extends StatelessWidget {
     required this.low,
     required this.high,
     required this.onWordTap,
+    this.lowDocuments = const [],
+    this.highDocuments = const [],
   });
 
   final String title;
@@ -242,13 +246,18 @@ class _AxisCard extends StatelessWidget {
   final String highLabel;
   final List<FactorWord> low;
   final List<FactorWord> high;
+
+  /// Entretiens situés de chaque côté (carte du corpus seulement).
+  final List<String> lowDocuments;
+  final List<String> highDocuments;
   final void Function(String key) onWordTap;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final tones = Tones.of(context);
-    Widget pole(String label, List<FactorWord> words, Accent accent) =>
+    Widget pole(String label, List<FactorWord> words, List<String> documents,
+            Accent accent) =>
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,6 +266,32 @@ class _AxisCard extends StatelessWidget {
                 label,
                 style: t.labelLarge?.copyWith(color: accent.onSoft(context)),
               ),
+              for (final d in documents)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          borderRadius: BorderRadius.circular(2.5),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          d,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 8),
               if (words.isEmpty)
                 Text('Aucun mot marquant',
@@ -303,7 +338,7 @@ class _AxisCard extends StatelessWidget {
               children: [
                 Expanded(child: Text(title, style: t.titleSmall)),
                 Text(
-                  '${_percent(share)} de l\'inertie',
+                  '${factorPercent(share)} de l\'inertie',
                   style: t.bodySmall?.copyWith(color: tones.muted),
                 ),
               ],
@@ -312,13 +347,13 @@ class _AxisCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                pole(lowLabel, low, Accent.coral),
+                pole(lowLabel, low, lowDocuments, Accent.coral),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Icon(Icons.compare_arrows_rounded,
                       size: 20, color: tones.muted),
                 ),
-                pole(highLabel, high, Accent.sky),
+                pole(highLabel, high, highDocuments, Accent.sky),
               ],
             ),
           ],
@@ -328,17 +363,25 @@ class _AxisCard extends StatelessWidget {
   }
 }
 
-class _Plot extends StatefulWidget {
-  const _Plot({required this.map, required this.onWordTap});
+/// La carte elle-même : mots en pastilles rondes, entretiens en carrés.
+class FactorPlot extends StatefulWidget {
+  const FactorPlot({
+    super.key,
+    required this.map,
+    required this.onWordTap,
+    this.documents = const [],
+  });
 
   final FactorMap map;
+  final List<FactorDocument> documents;
   final void Function(String key) onWordTap;
 
   @override
-  State<_Plot> createState() => _PlotState();
+  State<FactorPlot> createState() => _FactorPlotState();
 }
 
-class _PlotState extends State<_Plot> with SingleTickerProviderStateMixin {
+class _FactorPlotState extends State<FactorPlot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
@@ -353,12 +396,15 @@ class _PlotState extends State<_Plot> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final tones = Tones.of(context);
+    final ink = Theme.of(context).colorScheme.onSurface;
     return LayoutBuilder(
       builder: (context, constraints) {
         final side = constraints.maxWidth;
         final layout = _PlotLayout(
           widget.map,
+          widget.documents,
           side,
+          ink: ink,
           colorOf: (w) => _quadrant(w).color,
           textOf: (w) => _quadrant(w).onSoft(context),
         );
@@ -389,13 +435,53 @@ class _PlotState extends State<_Plot> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Placement des mots dans le carré de la carte : même échelle sur les deux
-/// axes, étiquettes posées sans chevauchement en commençant par les mots
-/// qui pèsent le plus.
+/// Un repère de la carte : un mot, plusieurs mots au même endroit, ou un
+/// entretien.
+class _Mark {
+  _Mark({
+    required this.at,
+    required this.radius,
+    required this.color,
+    required this.textColor,
+    required this.label,
+    this.key,
+    this.document = false,
+  });
+
+  final Offset at;
+  double radius;
+  final Color color;
+  final Color textColor;
+
+  /// Libellés réunis ici (plusieurs quand des mots se superposent).
+  final List<String> label;
+
+  /// Clé du mot à ouvrir quand on touche le repère ; null pour un entretien.
+  final String? key;
+  final bool document;
+
+  TextPainter? text;
+  Offset textAt = Offset.zero;
+
+  String get caption {
+    if (document) {
+      final title = label.first;
+      return title.length > 20 ? '${title.substring(0, 19)}…' : title;
+    }
+    if (label.length <= 2) return label.join(', ');
+    return '${label.take(2).join(', ')} +${label.length - 2}';
+  }
+}
+
+/// Placement des repères dans le carré de la carte : même échelle sur les
+/// deux axes, mots superposés réunis, étiquettes posées sans chevauchement
+/// en commençant par les entretiens puis par les mots qui pèsent le plus.
 class _PlotLayout {
   _PlotLayout(
-    this.map,
-    this.side, {
+    FactorMap map,
+    List<FactorDocument> documents,
+    double side, {
+    required Color ink,
     required Color Function(FactorWord) colorOf,
     required Color Function(FactorWord) textOf,
   }) {
@@ -403,12 +489,19 @@ class _PlotLayout {
     final words = map.words;
     var minX = 0.0, maxX = 0.0, minY = 0.0, maxY = 0.0;
     var most = 1;
+    void widen(double x, double y) {
+      minX = math.min(minX, x);
+      maxX = math.max(maxX, x);
+      minY = math.min(minY, y);
+      maxY = math.max(maxY, y);
+    }
+
     for (final w in words) {
-      minX = math.min(minX, w.x);
-      maxX = math.max(maxX, w.x);
-      minY = math.min(minY, w.y);
-      maxY = math.max(maxY, w.y);
+      widen(w.x, w.y);
       most = math.max(most, w.count);
+    }
+    for (final d in documents) {
+      widen(d.x, d.y);
     }
     final spanX = maxX - minX <= 0 ? 1.0 : maxX - minX;
     final spanY = maxY - minY <= 0 ? 1.0 : maxY - minY;
@@ -420,35 +513,63 @@ class _PlotLayout {
         Offset(side / 2 + (x - cx) * scale, side / 2 - (y - cy) * scale);
 
     origin = place(0, 0);
-    for (final w in words) {
-      points.add(place(w.x, w.y));
-      radii.add(3.5 + 5.5 * math.sqrt(w.count / most));
-      colors.add(colorOf(w));
-      labels.add(null);
-      labelAt.add(Offset.zero);
+    for (final d in documents) {
+      marks.add(_Mark(
+        at: place(d.x, d.y),
+        radius: 5.5,
+        color: ink,
+        textColor: ink,
+        label: [d.title],
+        document: true,
+      ));
     }
-
     final order = [for (var i = 0; i < words.length; i++) i]
       ..sort((a, b) => (words[b].contribX + words[b].contribY)
           .compareTo(words[a].contribX + words[a].contribY));
+    for (final i in order) {
+      final w = words[i];
+      final at = place(w.x, w.y);
+      final radius = 3.5 + 5.5 * math.sqrt(w.count / most);
+      _Mark? same;
+      for (final m in marks) {
+        if (!m.document && (m.at - at).distance < 2) {
+          same = m;
+          break;
+        }
+      }
+      if (same != null) {
+        same.label.add(w.label);
+        same.radius = math.max(same.radius, radius);
+      } else {
+        marks.add(_Mark(
+          at: at,
+          radius: radius,
+          color: colorOf(w),
+          textColor: textOf(w),
+          label: [w.label],
+          key: w.key,
+        ));
+      }
+    }
+
     final bounds = Rect.fromLTWH(2, 2, side - 4, side - 4);
     final taken = <Rect>[];
-    for (final i in order) {
+    for (final m in marks) {
       final tp = TextPainter(
         text: TextSpan(
-          text: words[i].label,
+          text: m.caption,
           style: TextStyle(
             fontFamily: fontFamily,
             fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: textOf(words[i]),
+            fontWeight: m.document ? FontWeight.w800 : FontWeight.w700,
+            color: m.textColor,
           ),
         ),
         maxLines: 1,
         textDirection: TextDirection.ltr,
       )..layout();
-      final p = points[i];
-      final r = radii[i];
+      final p = m.at;
+      final r = m.radius;
       final spots = [
         Offset(p.dx + r + 3, p.dy - tp.height / 2),
         Offset(p.dx - r - 3 - tp.width, p.dy - tp.height / 2),
@@ -465,33 +586,28 @@ class _PlotLayout {
         }
         if (taken.any((o) => o.overlaps(rect.inflate(1)))) continue;
         taken.add(rect);
-        labels[i] = tp;
-        labelAt[i] = spot;
+        m.text = tp;
+        m.textAt = spot;
         break;
       }
     }
   }
 
-  final FactorMap map;
-  final double side;
   late final Offset origin;
-  final List<Offset> points = [];
-  final List<double> radii = [];
-  final List<Color> colors = [];
 
-  /// Étiquette de chaque mot, ou null si elle n'a pas trouvé de place.
-  final List<TextPainter?> labels = [];
-  final List<Offset> labelAt = [];
+  /// Les entretiens d'abord, puis les mots du plus au moins contributif.
+  final List<_Mark> marks = [];
 
   /// Mot le plus proche du point touché, s'il y en a un à portée de doigt.
   String? hit(Offset at) {
     String? best;
     var bestDistance = 26.0;
-    for (var i = 0; i < points.length; i++) {
-      final d = (points[i] - at).distance;
+    for (final m in marks) {
+      if (m.key == null) continue;
+      final d = (m.at - at).distance;
       if (d < bestDistance) {
         bestDistance = d;
-        best = map.words[i].key;
+        best = m.key;
       }
     }
     return best;
@@ -508,7 +624,7 @@ class _PlotPainter extends CustomPainter {
 
   final _PlotLayout layout;
 
-  /// 0 = tous les mots à l'origine, 1 = à leur place.
+  /// 0 = tous les repères à l'origine, 1 = à leur place.
   final double progress;
   final Color rule;
   final Color halo;
@@ -522,17 +638,27 @@ class _PlotPainter extends CustomPainter {
     canvas.drawLine(Offset(0, o.dy), Offset(size.width, o.dy), axis);
     canvas.drawLine(Offset(o.dx, 0), Offset(o.dx, size.height), axis);
 
-    Offset at(int i) => Offset.lerp(o, layout.points[i], progress)!;
+    Offset at(_Mark m) => Offset.lerp(o, m.at, progress)!;
 
     final ring = Paint()
       ..color = halo
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    for (var i = 0; i < layout.points.length; i++) {
-      final p = at(i);
-      canvas.drawCircle(
-          p, layout.radii[i], Paint()..color = layout.colors[i].withValues(alpha: 0.9));
-      canvas.drawCircle(p, layout.radii[i], ring);
+    // Les mots d'abord, les entretiens par-dessus.
+    for (final m in layout.marks.reversed) {
+      final p = at(m);
+      if (m.document) {
+        final square = RRect.fromRectAndRadius(
+          Rect.fromCircle(center: p, radius: m.radius),
+          const Radius.circular(3),
+        );
+        canvas.drawRRect(square, Paint()..color = m.color);
+        canvas.drawRRect(square, ring);
+      } else {
+        canvas.drawCircle(
+            p, m.radius, Paint()..color = m.color.withValues(alpha: 0.9));
+        canvas.drawCircle(p, m.radius, ring);
+      }
     }
 
     final opacity = ((progress - 0.4) / 0.6).clamp(0.0, 1.0);
@@ -541,11 +667,10 @@ class _PlotPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..color = Colors.white.withValues(alpha: opacity),
     );
-    for (var i = 0; i < layout.points.length; i++) {
-      final tp = layout.labels[i];
+    for (final m in layout.marks) {
+      final tp = m.text;
       if (tp == null) continue;
-      final shift = at(i) - layout.points[i];
-      tp.paint(canvas, layout.labelAt[i] + shift);
+      tp.paint(canvas, m.textAt + (at(m) - m.at));
     }
     canvas.restore();
   }

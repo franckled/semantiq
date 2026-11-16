@@ -22,7 +22,9 @@ import 'package:semantiq/sample_study.dart';
 import 'package:semantiq/services/settings.dart';
 import 'package:semantiq/ui/app_scope.dart';
 import 'package:semantiq/ui/codebook_screen.dart';
+import 'package:semantiq/engine/factorial.dart';
 import 'package:semantiq/ui/coding_tab.dart';
+import 'package:semantiq/ui/corpus_map_screen.dart';
 import 'package:semantiq/ui/factor_view.dart';
 import 'package:semantiq/ui/home_screen.dart';
 import 'package:semantiq/ui/illustrations.dart';
@@ -222,6 +224,27 @@ void main() {
       await settle();
       await shoot('15_oppositions');
       await factorMap('16_carte_factorielle_sombre', Brightness.dark);
+
+      Widget corpusMap() => Scaffold(
+            appBar: AppBar(title: const Text('Carte du corpus')),
+            body: Backdrop(
+              variant: 2,
+              child: CorpusMapView(
+                corpus: buildCorpusMap([
+                  for (final s in sampleStudy)
+                    (id: s.title, title: s.title, text: s.text),
+                ], const AnalysisOptions()),
+              ),
+            ),
+          );
+      await show('corpus', corpusMap(), InterviewStore.memory());
+      await shoot('17_carte_du_corpus');
+      await tester.dragFrom(const Offset(195, 800), const Offset(0, -520));
+      await settle();
+      await shoot('18_carte_du_corpus_oppositions');
+      await show('corpus_sombre', corpusMap(), InterviewStore.memory(),
+          brightness: Brightness.dark);
+      await shoot('19_carte_du_corpus_sombre');
 
       await tester.pumpWidget(const SizedBox());
     } finally {

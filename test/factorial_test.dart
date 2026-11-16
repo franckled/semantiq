@@ -148,4 +148,62 @@ void main() {
       expect(() => FactorMap.of(analyze(sampleInterview)), returnsNormally);
     });
   });
+
+  group('Carte du corpus', () {
+    final texts = <CorpusText>[
+      for (final s in sampleStudy) (id: s.title, title: s.title, text: s.text),
+    ];
+
+    test('place les mots et les trois entretiens', () {
+      final corpus = buildCorpusMap(texts, const AnalysisOptions())!;
+      expect(corpus.documents.map((d) => d.title),
+          sampleStudy.map((s) => s.title));
+      expect(corpus.map.words.length, inInclusiveRange(4, 40));
+      // Trois entretiens : deux axes portent toute l'inertie.
+      expect(corpus.map.shareX + corpus.map.shareY, closeTo(1, 1e-6));
+      for (final w in corpus.map.words) {
+        final counts = corpus.counts[w.key]!;
+        expect(counts, hasLength(3));
+        expect(counts.reduce((a, b) => a + b), w.count);
+        expect(w.count, greaterThanOrEqualTo(3));
+      }
+      // Chaque axe a des entretiens des deux côtés : c'est une opposition.
+      for (var axis = 0; axis < 2; axis++) {
+        final low = corpus.side(axis, positive: false);
+        final high = corpus.side(axis, positive: true);
+        expect(low, isNotEmpty);
+        expect(high, isNotEmpty);
+        expect(low.length + high.length, 3);
+      }
+    });
+
+    test('un mot propre à un entretien tombe de son côté', () {
+      // « kiné » n'est dit que dans le deuxième entretien.
+      final corpus =
+          buildCorpusMap(texts, const AnalysisOptions(), minCount: 1,
+              maxWords: 120)!;
+      final second = corpus.documents[1];
+      final own = corpus.map.words.where((w) {
+        final c = corpus.counts[w.key]!;
+        return c[0] == 0 && c[1] > 0 && c[2] == 0;
+      }).toList();
+      expect(own, isNotEmpty);
+      for (final w in own) {
+        // Même direction depuis l'origine que l'entretien lui-même.
+        expect(w.x * second.x + w.y * second.y, greaterThan(0));
+      }
+    });
+
+    test('renonce à moins de trois entretiens', () {
+      expect(buildCorpusMap(texts.take(2).toList(), const AnalysisOptions()),
+          isNull);
+      expect(buildCorpusMap(const [], const AnalysisOptions()), isNull);
+      expect(
+          buildCorpusMap([
+            ...texts.take(2),
+            (id: 'vide', title: 'Vide', text: ''),
+          ], const AnalysisOptions()),
+          isNull);
+    });
+  });
 }

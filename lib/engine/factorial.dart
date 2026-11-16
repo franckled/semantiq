@@ -378,3 +378,153 @@ FactorMap? buildFactorMap(Analysis a, {int maxWords = 40}) {
     inertia: ca.inertia,
   );
 }
+
+/// Un entretien placé sur la carte du corpus.
+class FactorDocument {
+  const FactorDocument({
+    required this.id,
+    required this.title,
+    required this.x,
+    required this.y,
+  });
+
+  final String id;
+  final String title;
+  final double x;
+  final double y;
+}
+
+/// Texte d'un entretien, tel que la carte du corpus le lit.
+typedef CorpusText = ({String id, String title, String text});
+
+/// Carte factorielle du corpus : analyse des correspondances du tableau
+/// mots × entretiens. Un mot est attiré par les entretiens qui l'emploient
+/// plus que les autres ; deux entretiens proches parlent avec les mêmes
+/// mots, deux entretiens opposés sur un axe n'ont pas le même vocabulaire.
+class CorpusMap {
+  const CorpusMap({
+    required this.map,
+    required this.documents,
+    required this.counts,
+  });
+
+  /// Les mots, leurs coordonnées et la part d'inertie des axes.
+  final FactorMap map;
+
+  /// Les entretiens du tableau, du plus ancien au plus récent tels qu'ils
+  /// ont été fournis.
+  final List<FactorDocument> documents;
+
+  /// Pour chaque mot (par sa clé), ses occurrences dans chaque entretien,
+  /// dans l'ordre de [documents].
+  final Map<String, List<int>> counts;
+
+  /// Entretiens situés d'un côté de l'axe [axis] (0 ou 1), du plus éloigné
+  /// de l'origine au plus proche.
+  List<FactorDocument> side(int axis, {required bool positive}) {
+    double coord(FactorDocument d) => axis == 0 ? d.x : d.y;
+    return [
+      for (final d in documents)
+        if (coord(d) != 0 && (coord(d) > 0) == positive) d,
+    ]..sort((a, b) => coord(b).abs().compareTo(coord(a).abs()));
+  }
+}
+
+/// Construit la carte du corpus à partir des [maxWords] mots les plus
+/// fréquents (au moins [minCount] occurrences en tout). Il faut au moins
+/// trois entretiens pour porter deux axes ; sinon, null. Calcul pur : peut
+/// tourner dans un isolate.
+CorpusMap? buildCorpusMap(
+  List<CorpusText> texts,
+  AnalysisOptions options, {
+  int maxWords = 40,
+  int minCount = 3,
+}) {
+  if (texts.length < 3) return null;
+  final wide = AnalysisOptions(
+    excludeInterviewer: options.excludeInterviewer,
+    groupForms: options.groupForms,
+    extraStopwords: options.extraStopwords,
+    interviewerLabels: options.interviewerLabels,
+    summarySentences: 0,
+    keySentences: 0,
+    maxWords: 100000,
+    networkWords: 0,
+  );
+
+  // Fréquence de chaque mot dans chaque entretien.
+  final merged = <String, WordStat>{};
+  final perText = <Map<String, int>>[];
+  for (final text in texts) {
+    final counts = <String, int>{};
+    for (final w in analyze(text.text, wide).words) {
+      counts[w.key] = w.count;
+      final m = merged.putIfAbsent(w.key, () => WordStat(w.key));
+      m.count += w.count;
+      w.forms.forEach((form, n) => m.forms[form] = (m.forms[form] ?? 0) + n);
+    }
+    perText.add(counts);
+  }
+
+  // Les entretiens sans aucun mot plein ne peuvent pas être placés.
+  final kept = [
+    for (var j = 0; j < texts.length; j++)
+      if (perText[j].isNotEmpty) j,
+  ];
+  if (kept.length < 3) return null;
+
+  final chosen = merged.values.where((w) => w.count >= minCount).toList()
+    ..sort((a, b) {
+      final c = b.count.compareTo(a.count);
+      return c != 0 ? c : a.label.compareTo(b.label);
+    });
+  if (chosen.length > maxWords) chosen.removeRange(maxWords, chosen.length);
+  if (chosen.length < 4) return null;
+
+  final table = [
+    for (final w in chosen)
+      [for (final j in kept) (perText[j][w.key] ?? 0).toDouble()],
+  ];
+  // Un entretien qui n'emploie aucun des mots retenus viderait une colonne.
+  for (var c = 0; c < kept.length; c++) {
+    if (table.every((row) => row[c] == 0)) return null;
+  }
+  final ca = correspondence(table);
+  if (ca == null) return null;
+
+  return CorpusMap(
+    map: FactorMap(
+      words: [
+        for (var i = 0; i < chosen.length; i++)
+          FactorWord(
+            key: chosen[i].key,
+            label: chosen[i].label,
+            count: chosen[i].count,
+            x: ca.rows[i][0],
+            y: ca.rows[i][1],
+            contribX: ca.contributions[i][0],
+            contribY: ca.contributions[i][1],
+            quality: ca.quality[i],
+          ),
+      ],
+      segments: kept.length,
+      segmentSize: 0,
+      shareX: ca.share(0),
+      shareY: ca.share(1),
+      inertia: ca.inertia,
+    ),
+    documents: [
+      for (var c = 0; c < kept.length; c++)
+        FactorDocument(
+          id: texts[kept[c]].id,
+          title: texts[kept[c]].title,
+          x: ca.columns[c][0],
+          y: ca.columns[c][1],
+        ),
+    ],
+    counts: {
+      for (final w in chosen)
+        w.key: [for (final j in kept) perText[j][w.key] ?? 0],
+    },
+  );
+}
