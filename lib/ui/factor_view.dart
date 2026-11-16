@@ -553,7 +553,10 @@ class _PlotLayout {
     }
 
     final bounds = Rect.fromLTWH(2, 2, side - 4, side - 4);
-    final taken = <Rect>[];
+    // Une étiquette ne recouvre ni une autre étiquette ni un autre repère.
+    final taken = <Rect>[
+      for (final m in marks) Rect.fromCircle(center: m.at, radius: m.radius),
+    ];
     for (final m in marks) {
       final tp = TextPainter(
         text: TextSpan(
@@ -575,6 +578,10 @@ class _PlotLayout {
         Offset(p.dx - r - 3 - tp.width, p.dy - tp.height / 2),
         Offset(p.dx - tp.width / 2, p.dy - r - 2 - tp.height),
         Offset(p.dx - tp.width / 2, p.dy + r + 2),
+        Offset(p.dx + r, p.dy - r - tp.height),
+        Offset(p.dx + r, p.dy + r),
+        Offset(p.dx - r - tp.width, p.dy - r - tp.height),
+        Offset(p.dx - r - tp.width, p.dy + r),
       ];
       for (final spot in spots) {
         final rect = spot & tp.size;
@@ -584,7 +591,7 @@ class _PlotLayout {
             rect.bottom > bounds.bottom) {
           continue;
         }
-        if (taken.any((o) => o.overlaps(rect.inflate(1)))) continue;
+        if (taken.any((o) => o.overlaps(rect))) continue;
         taken.add(rect);
         m.text = tp;
         m.textAt = spot;
