@@ -15,9 +15,10 @@ const _pad = EdgeInsets.fromLTRB(16, 4, 16, 40);
 
 typedef Section = ({String label, IconData icon, Accent accent});
 
-/// Les cinq rubriques des résultats, chacune dans sa couleur.
+/// Les six rubriques des résultats, chacune dans sa couleur.
 const List<Section> sections = [
   (label: 'Résumé', icon: Icons.auto_awesome_rounded, accent: Accent.violet),
+  (label: 'Codage', icon: Icons.sell_rounded, accent: Accent.rose),
   (label: 'Phrases clés', icon: Icons.format_quote_rounded, accent: Accent.coral),
   (label: 'Mots', icon: Icons.bar_chart_rounded, accent: Accent.sun),
   (label: 'Corrélations', icon: Icons.hub_rounded, accent: Accent.mint),

@@ -16,11 +16,14 @@ import 'motion.dart';
 import 'theme.dart';
 import 'transcribe_screen.dart';
 
-/// Enregistrement d'une réunion en direct : minuteur, onde sonore, pause et
-/// moments marqués. À l'arrêt, la réunion est créée avec son fichier audio,
-/// puis transcrite.
+/// Enregistrement en direct d'un entretien ou d'une réunion : minuteur,
+/// onde sonore, pause et moments marqués. À l'arrêt, l'entretien est créé
+/// avec son fichier audio, puis transcrit.
 class RecordScreen extends StatefulWidget {
-  const RecordScreen({super.key});
+  const RecordScreen({super.key, this.kind = InterviewKind.interview});
+
+  /// Entretien de recherche ou réunion de travail.
+  final InterviewKind kind;
 
   @override
   State<RecordScreen> createState() => _RecordScreenState();
@@ -37,7 +40,7 @@ class _RecordScreenState extends State<RecordScreen> {
     if (_rec == null) {
       final store = AppScope.of(context).store;
       _rec = MeetingRecorder(directory: store.recordingsDir);
-      _title.text = store.nextTitle(InterviewKind.meeting);
+      _title.text = store.nextTitle(widget.kind);
     }
   }
 
@@ -92,12 +95,12 @@ class _RecordScreenState extends State<RecordScreen> {
     if (!mounted) return;
     final scope = AppScope.of(context);
     final title = _title.text.trim().isEmpty
-        ? scope.store.nextTitle(InterviewKind.meeting)
+        ? scope.store.nextTitle(widget.kind)
         : _title.text.trim();
     final it = scope.store.create(
       title: title,
       text: '',
-      kind: InterviewKind.meeting,
+      kind: widget.kind,
       source: 'Enregistré dans l\'app',
       audioFile: r.fileName,
       duration: duration,
@@ -123,7 +126,7 @@ class _RecordScreenState extends State<RecordScreen> {
             audioPath: path,
             fileName: title,
             target: it,
-            kind: InterviewKind.meeting,
+            kind: widget.kind,
           ),
         ),
       );
@@ -158,7 +161,10 @@ class _RecordScreenState extends State<RecordScreen> {
                       accent: Accent.mint, size: 64),
                 ),
                 const SizedBox(height: 14),
-                Text('Réunion enregistrée',
+                Text(
+                    widget.kind == InterviewKind.meeting
+                        ? 'Réunion enregistrée'
+                        : 'Entretien enregistré',
                     textAlign: TextAlign.center, style: t.headlineSmall),
                 const SizedBox(height: 4),
                 Text(
@@ -238,7 +244,7 @@ class _RecordScreenState extends State<RecordScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Réunion'),
+          title: Text(widget.kind.label),
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
             onPressed: _busy ? null : _onBack,
@@ -256,6 +262,7 @@ class _RecordScreenState extends State<RecordScreen> {
                     ? _Ready(
                         key: const ValueKey('ready'),
                         title: _title,
+                        meeting: widget.kind == InterviewKind.meeting,
                         busy: _busy,
                         onStart: _start,
                       )
@@ -278,11 +285,15 @@ class _Ready extends StatelessWidget {
   const _Ready({
     super.key,
     required this.title,
+    required this.meeting,
     required this.busy,
     required this.onStart,
   });
 
   final TextEditingController title;
+
+  /// Réunion de travail (sinon : entretien de recherche).
+  final bool meeting;
   final bool busy;
   final VoidCallback onStart;
 
@@ -298,9 +309,10 @@ class _Ready extends StatelessWidget {
             controller: title,
             textCapitalization: TextCapitalization.sentences,
             style: t.titleMedium,
-            decoration: const InputDecoration(
-              labelText: 'Titre de la réunion',
-              prefixIcon: Icon(Icons.edit_rounded),
+            decoration: InputDecoration(
+              labelText:
+                  meeting ? 'Titre de la réunion' : "Titre de l'entretien",
+              prefixIcon: const Icon(Icons.edit_rounded),
             ),
           ),
         ),
@@ -316,7 +328,11 @@ class _Ready extends StatelessWidget {
             textAlign: TextAlign.center, style: t.titleMedium),
         const SizedBox(height: 6),
         Text(
-          'Posez l\'iPhone au centre de la table, micro vers les participants.',
+          meeting
+              ? 'Posez l\'iPhone au centre de la table, micro vers les '
+                  'participants.'
+              : 'Posez l\'iPhone entre vous et la personne interrogée, micro '
+                  'vers elle.',
           textAlign: TextAlign.center,
           style: t.bodyMedium?.copyWith(color: tones.muted),
         ),
@@ -332,9 +348,13 @@ class _Ready extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Prévenez les participants que la réunion est enregistrée '
-                    'et recueillez leur accord. Le fichier reste sur cet '
-                    'iPhone.',
+                    meeting
+                        ? 'Prévenez les participants que la réunion est '
+                            'enregistrée et recueillez leur accord. Le fichier '
+                            'reste sur cet iPhone.'
+                        : 'Recueillez le consentement de la personne avant '
+                            "d'enregistrer, comme le prévoit votre note "
+                            "d'information. Le fichier reste sur cet iPhone.",
                     style: t.bodyMedium
                         ?.copyWith(color: Accent.sun.onSoft(context)),
                   ),
@@ -355,9 +375,13 @@ class _Ready extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Pendant la réunion, touchez « Marquer » à chaque moment '
-                    'important : il sera repéré dans le texte et mis en avant '
-                    'dans le compte rendu.',
+                    meeting
+                        ? 'Pendant la réunion, touchez « Marquer » à chaque '
+                            'moment important : il sera repéré dans le texte '
+                            'et mis en avant dans le compte rendu.'
+                        : "Pendant l'entretien, touchez « Marquer » à chaque "
+                            'moment important : il sera repéré dans le texte, '
+                            'pour y revenir au moment du codage.',
                     style: t.bodyMedium
                         ?.copyWith(color: Accent.sky.onSoft(context)),
                   ),

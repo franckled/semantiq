@@ -1,16 +1,18 @@
 # SemantiQ
 
-Application iPhone (et Android) pour les internes et chercheurs en médecine qui analysent les entretiens semi-directifs de leur thèse.
+Application iPhone (et Android) pour les internes et chercheurs en médecine qui analysent les entretiens semi-directifs de leur thèse : de l'enregistrement au livre de codes.
 
 On importe un enregistrement (mémo vocal, dictaphone) ou on colle une retranscription. SemantiQ produit :
 
 - **le texte** : transcription sur l'iPhone (Whisper) ou par API (Mistral, OpenAI), puis relecture, marquage des locuteurs et pseudonymisation ;
+- **le codage thématique** : on touche une phrase pour lui poser un code ; les codes sont ceux du chercheur, l'app n'en propose aucun ;
+- **le livre de codes** : les codes de tous les entretiens, rangés par thème, avec leur définition, leurs verbatims et la courbe de saturation (codes nouveaux à chaque entretien) ;
 - **le résumé** : extractif et calculé sur l'iPhone, ou rédigé par une IA (Mistral, Claude, OpenAI) avec thèmes et verbatims ;
 - **les mots les plus fréquents** : hors mots-outils et tics de l'oral, formes regroupées (patient, patiente, patients), en nuage ou en liste, avec les phrases où chaque mot apparaît ;
 - **les phrases clés** : classées par centralité (TextRank), et les expressions récurrentes (« médecin traitant », « prise en charge ») ;
 - **les corrélations de mots** : un réseau de cooccurrences et le tableau des paires les plus associées, mesurées par l'information mutuelle.
 
-Les exports disponibles sont un rapport Markdown, un tableau des fréquences en CSV et un corpus au format IRaMuTeQ. Le corpus peut regrouper tous les entretiens, avec leurs variables.
+Les exports disponibles sont le livre de codes avec ses verbatims (Markdown), la matrice codes × entretiens (CSV), un rapport d'analyse Markdown, un tableau des fréquences en CSV et un corpus au format IRaMuTeQ. Le corpus peut regrouper tous les entretiens, avec leurs variables.
 
 ## Confidentialité
 
@@ -56,6 +58,7 @@ L'identifiant `fr.semantiq.app` doit être enregistré dans Apple Developer, et 
 ```
 lib/engine/    analyse lexicale (pur Dart, testée) : découpage, racinisation,
                fréquences, TextRank, cooccurrences, exports, vérification des citations
+               codage thématique : livre de codes, saturation, matrice
 lib/services/  transcription (Whisper local / API), résumé par IA, réglages
 lib/data/      enregistrement des entretiens
 lib/ui/        écrans
