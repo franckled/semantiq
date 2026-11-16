@@ -59,6 +59,28 @@ void main() {
       ]);
     });
 
+    test('garde tout l\'éboulis des valeurs propres', () {
+      final ca = correspondence(smoking)!;
+      // Quatre colonnes : trois axes au plus.
+      expect(ca.spectrum, hasLength(3));
+      expect(ca.spectrum[0], closeTo(0.07476, 1e-5));
+      expect(ca.spectrum[1], closeTo(0.01002, 1e-5));
+      expect(ca.spectrum[2], closeTo(0.00041, 1e-5));
+      expect(ca.spectrum.reduce((a, b) => a + b), closeTo(ca.inertia, 1e-12));
+      expect(ca.spectrum.take(2), ca.eigenvalues);
+      // La courbe se casse dès le deuxième axe : un seul axe à retenir.
+      expect(elbowAxes(ca.spectrum), 1);
+    });
+
+    test('critère du coude', () {
+      expect(elbowAxes([5, 4, 3, 1, 0.9, 0.8]), 3);
+      expect(elbowAxes([10, 9, 2, 1.5, 1]), 2);
+      expect(elbowAxes([8, 1, 0.9, 0.8]), 1);
+      // Deux valeurs ou moins : pas de coude.
+      expect(elbowAxes([3, 1]), isNull);
+      expect(elbowAxes([]), isNull);
+    });
+
     test('contributions et qualités cohérentes', () {
       final ca = correspondence(smoking)!;
       for (var k = 0; k < 2; k++) {
@@ -118,6 +140,16 @@ void main() {
       // Les contributions des mots à un axe se partagent toute son inertie.
       expect(
           map.words.fold<double>(0, (s, w) => s + w.contribX), closeTo(1, 1e-9));
+      // L'éboulis décroît, commence par les deux axes de la carte et
+      // totalise toute l'inertie.
+      expect(map.spectrum.length, greaterThanOrEqualTo(3));
+      expect(map.spectrum[0], closeTo(map.shareX, 1e-12));
+      expect(map.spectrum[1], closeTo(map.shareY, 1e-12));
+      for (var k = 1; k < map.spectrum.length; k++) {
+        expect(map.spectrum[k], lessThanOrEqualTo(map.spectrum[k - 1]));
+      }
+      expect(map.spectrum.reduce((a, b) => a + b), closeTo(1, 1e-9));
+      expect(map.elbow, inInclusiveRange(1, map.spectrum.length - 2));
       // Même objet au second appel : calculée une seule fois.
       expect(FactorMap.of(corpus), same(map));
     });
@@ -161,6 +193,8 @@ void main() {
       expect(corpus.map.words.length, inInclusiveRange(4, 40));
       // Trois entretiens : deux axes portent toute l'inertie.
       expect(corpus.map.shareX + corpus.map.shareY, closeTo(1, 1e-6));
+      expect(corpus.map.spectrum, hasLength(2));
+      expect(corpus.map.elbow, isNull);
       for (final w in corpus.map.words) {
         final counts = corpus.counts[w.key]!;
         expect(counts, hasLength(3));

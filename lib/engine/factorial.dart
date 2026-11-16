@@ -60,6 +60,7 @@ class Correspondence {
   const Correspondence({
     required this.inertia,
     required this.eigenvalues,
+    required this.spectrum,
     required this.rows,
     required this.columns,
     required this.contributions,
@@ -71,6 +72,10 @@ class Correspondence {
 
   /// Inertie portée par chaque axe gardé, du premier au dernier.
   final List<double> eigenvalues;
+
+  /// Inertie de tous les axes du tableau, du plus fort au plus faible :
+  /// l'éboulis des valeurs propres.
+  final List<double> spectrum;
 
   /// Coordonnées principales des lignes : `rows[i][k]` sur l'axe k.
   final List<List<double>> rows;
@@ -187,9 +192,14 @@ Correspondence? correspondence(List<List<double>> table, {int axes = 2}) {
     quality[i] = math.min(1.0, shown / distance);
   }
 
+  final first = eigen.values[order.first];
   return Correspondence(
     inertia: inertia,
     eigenvalues: values,
+    spectrum: [
+      for (final k in order)
+        if (eigen.values[k] > first * 1e-9) eigen.values[k],
+    ],
     rows: rows,
     columns: columns,
     contributions: contributions,
@@ -203,6 +213,26 @@ double _dot(List<double> a, List<double> b) {
     sum += a[k] * b[k];
   }
   return sum;
+}
+
+/// Critère du coude sur un éboulis de valeurs propres décroissantes :
+/// nombre d'axes à retenir, c'est-à-dire ceux qui précèdent la cassure la
+/// plus nette de la courbe (plus forte différence seconde). Null s'il y a
+/// moins de trois valeurs : une courbe à deux points n'a pas de coude.
+///
+/// C'est un repère visuel mis en chiffre, pas un test statistique.
+int? elbowAxes(List<double> values) {
+  if (values.length < 3) return null;
+  var best = 0;
+  var sharpest = double.negativeInfinity;
+  for (var k = 0; k + 2 < values.length; k++) {
+    final bend = values[k] - 2 * values[k + 1] + values[k + 2];
+    if (bend > sharpest) {
+      sharpest = bend;
+      best = k;
+    }
+  }
+  return best + 1;
 }
 
 /// Un mot placé sur la carte factorielle.
@@ -247,6 +277,7 @@ class FactorMap {
     required this.shareX,
     required this.shareY,
     required this.inertia,
+    this.spectrum = const [],
   });
 
   final List<FactorWord> words;
@@ -261,6 +292,14 @@ class FactorMap {
   final double shareX;
   final double shareY;
   final double inertia;
+
+  /// Éboulis : part de l'inertie portée par chaque axe du tableau, du
+  /// premier au dernier (les deux premiers sont ceux de la carte).
+  final List<double> spectrum;
+
+  /// Nombre d'axes que le critère du coude invite à retenir, ou null si
+  /// le tableau en porte trop peu pour chercher un coude.
+  int? get elbow => elbowAxes(spectrum);
 
   /// Mots qui pèsent le plus sur un côté de l'axe [axis] (0 ou 1) : ceux
   /// dont la contribution dépasse la moyenne, du plus au moins contributif.
@@ -376,6 +415,7 @@ FactorMap? buildFactorMap(Analysis a, {int maxWords = 40}) {
     shareX: ca.share(0),
     shareY: ca.share(1),
     inertia: ca.inertia,
+    spectrum: [for (final v in ca.spectrum) v / ca.inertia],
   );
 }
 
@@ -512,6 +552,7 @@ CorpusMap? buildCorpusMap(
       shareX: ca.share(0),
       shareY: ca.share(1),
       inertia: ca.inertia,
+      spectrum: [for (final v in ca.spectrum) v / ca.inertia],
     ),
     documents: [
       for (var c = 0; c < kept.length; c++)

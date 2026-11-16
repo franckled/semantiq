@@ -206,6 +206,7 @@ class FactorTab extends StatelessWidget {
           high: map.pole(1, positive: true),
           onWordTap: onWordTap,
         ),
+        FactorScree(map: map),
         const SizedBox(height: 16),
         TintCard(
           accent: Accent.mint,
@@ -356,6 +357,177 @@ class FactorAxisCard extends StatelessWidget {
                 pole(highLabel, high, highDocuments, Accent.sky),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Éboulis des valeurs propres et critère du coude : ce que les deux axes
+/// de la carte restituent, et s'il faudrait en lire davantage.
+class FactorScree extends StatelessWidget {
+  const FactorScree({super.key, required this.map});
+
+  final FactorMap map;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tones = Tones.of(context);
+    final spectrum = map.spectrum;
+    if (spectrum.isEmpty) return const SizedBox.shrink();
+    final elbow = map.elbow;
+    final shown = spectrum.take(10).toList();
+    final top = shown.first;
+    final both = factorPercent(map.shareX + map.shareY);
+
+    final String verdict;
+    if (elbow == null) {
+      verdict = 'Ce tableau ne porte que ${spectrum.length} '
+          'axe${spectrum.length > 1 ? 's' : ''} : il n\'y a pas de coude à '
+          'chercher. La carte en montre deux, soit $both de l\'inertie.';
+    } else if (elbow <= 2) {
+      verdict = 'La courbe se casse après l\'axe $elbow : les deux axes de '
+          'la carte suffisent à lire la structure principale. Ils '
+          'restituent $both de l\'inertie.';
+    } else {
+      verdict = 'La courbe se casse après l\'axe $elbow : il faudrait lire '
+          '$elbow axes, et la carte n\'en montre que deux ($both de '
+          'l\'inertie). Une partie de la structure ne s\'y voit pas.';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionTitle(
+          'Éboulis des valeurs propres',
+          subtitle: 'Part de l\'inertie portée par chaque axe, en %'
+              '${spectrum.length > shown.length ? ' · dix premiers axes sur ${spectrum.length}' : ''}',
+          accent: Accent.sun,
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 150,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var k = 0; k < shown.length; k++)
+                        Expanded(
+                          child: _ScreeBar(
+                            axis: k + 1,
+                            share: shown[k],
+                            height: shown[k] / top,
+                            kept: elbow != null && k < elbow,
+                            // La cassure tombe juste après cette barre.
+                            last: elbow != null && k == elbow - 1,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(verdict, style: t.bodyMedium),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    'Le critère du coude est un repère de lecture, pas un '
+                    'test statistique : il ne dit pas si la structure est '
+                    'due au hasard.',
+                    style: t.bodySmall?.copyWith(color: tones.muted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScreeBar extends StatelessWidget {
+  const _ScreeBar({
+    required this.axis,
+    required this.share,
+    required this.height,
+    required this.kept,
+    required this.last,
+  });
+
+  final int axis;
+  final double share;
+
+  /// Hauteur relative à la plus haute barre (0 à 1).
+  final double height;
+
+  /// Axe situé avant le coude.
+  final bool kept;
+
+  /// Dernier axe avant le coude.
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final tones = Tones.of(context);
+    final fg = kept ? Accent.sun.onSoft(context) : tones.muted;
+    final percent = share * 100;
+    TextStyle label(FontWeight weight) => TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 11,
+          fontWeight: weight,
+          color: fg,
+        );
+    return Semantics(
+      label: 'Axe $axis : ${factorPercent(share)} de l\'inertie'
+          '${last ? ', coude après cet axe' : ''}',
+      excludeSemantics: true,
+      child: Container(
+        // Le trait marque la cassure de la courbe.
+        decoration: BoxDecoration(
+          border: last
+              ? Border(right: BorderSide(color: tones.danger, width: 2))
+              : null,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Column(
+          children: [
+            Text(
+              percent >= 9.5
+                  ? percent.round().toString()
+                  : percent.toStringAsFixed(1).replaceAll('.', ','),
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              softWrap: false,
+              style: label(FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: height.clamp(0.02, 1.0),
+                  widthFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: kept ? Palette.sun : tones.rule,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text('$axis', style: label(FontWeight.w700)),
           ],
         ),
       ),

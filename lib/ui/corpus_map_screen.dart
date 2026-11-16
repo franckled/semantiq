@@ -183,6 +183,7 @@ class CorpusMapView extends StatelessWidget {
           highDocuments: titles(1, true),
           onWordTap: open,
         ),
+        FactorScree(map: map),
         const SizedBox(height: 16),
         TintCard(
           accent: Accent.mint,

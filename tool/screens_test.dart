@@ -223,6 +223,9 @@ void main() {
       await tester.dragFrom(const Offset(195, 800), const Offset(0, -470));
       await settle();
       await shoot('15_oppositions');
+      await tester.dragFrom(const Offset(195, 700), const Offset(0, -520));
+      await settle();
+      await shoot('15b_eboulis');
       await factorMap('16_carte_factorielle_sombre', Brightness.dark);
 
       Widget corpusMap() => Scaffold(
