@@ -11,9 +11,9 @@ import '../services/settings.dart';
 import 'app_scope.dart';
 import 'coding_tab.dart';
 import 'common.dart';
+import 'factor_view.dart';
 import 'illustrations.dart';
 import 'minutes_tab.dart';
-import 'network_view.dart';
 import 'results_tabs.dart';
 import 'theme.dart';
 
@@ -148,15 +148,20 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               interview: _it,
                               store: AppScope.of(context).store,
                             ),
-                          KeySentencesTab(analysis: a, interview: _it),
+                          // Réunion : les phrases clés suivent le compte
+                          // rendu. Entretien : les mots d'abord.
+                          if (_it.isMeeting)
+                            KeySentencesTab(analysis: a, interview: _it),
                           WordsTab(
                             analysis: a,
                             onWordTap: (w) => _openWord(a, w.key),
                           ),
-                          NetworkTab(
+                          CorrelationsTab(
                             analysis: a,
                             onWordTap: (key) => _openWord(a, key),
                           ),
+                          if (!_it.isMeeting)
+                            KeySentencesTab(analysis: a, interview: _it),
                           TextTab(analysis: a),
                         ],
                       ),
