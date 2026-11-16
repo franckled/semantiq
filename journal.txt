@@ -1,0 +1,6 @@
+
+::group::✅ Passing tests
+✅ Captures d'écran
+::endgroup::
+
+🎉 1 test passed.
