@@ -231,6 +231,7 @@ class FactorTab extends StatelessWidget {
 /// Les mots (et, pour un corpus, les entretiens) de chaque côté d'un axe.
 class FactorAxisCard extends StatelessWidget {
   const FactorAxisCard({
+    super.key,
     required this.title,
     required this.share,
     required this.lowLabel,
