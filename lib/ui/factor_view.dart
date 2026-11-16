@@ -564,7 +564,7 @@ class FactorReliability extends StatelessWidget {
     final accent = significant ? Accent.mint : Accent.coral;
     final poor = map.poorlyShown;
     final good = map.words.length - poor.length;
-    final stats = 'χ² = ${_decimal(map.chi2, 1)} · ddl = ${map.degrees} · '
+    final stats = 'Khi² = ${_decimal(map.chi2, 1)} · ddl = ${map.degrees} · '
         '${formatPValue(map.pValue)}';
 
     Widget heading(IconData icon, String text, Color color) => Row(
@@ -628,9 +628,15 @@ class FactorReliability extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Indicatif : les mots d\'un même passage ne sont pas des '
-                  'tirages indépendants'
-                  '${map.smallExpected > 0.2 ? ', et ${factorPercent(map.smallExpected)} des effectifs attendus sont inférieurs à 5, ce qui rend la valeur p approximative' : ''}.',
+                  map.permuted
+                      ? 'Effectifs trop faibles pour la loi du khi-deux '
+                          '(${factorPercent(map.smallExpected)} des effectifs '
+                          'attendus sont inférieurs à 5) : la valeur p est '
+                          'obtenue par permutation, sur 999 tirages au hasard. '
+                          'Elle reste indicative : les mots d\'un même passage '
+                          'ne sont pas des tirages indépendants.'
+                      : 'Indicatif : les mots d\'un même passage ne sont pas '
+                          'des tirages indépendants.',
                   style: t.bodySmall?.copyWith(color: tones.muted),
                 ),
                 Padding(

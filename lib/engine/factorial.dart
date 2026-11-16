@@ -114,6 +114,73 @@ class Correspondence {
   double get pValue => chiSquarePValue(chi2, degrees);
 }
 
+/// Khi-deux d'indépendance d'un tableau d'effectifs, par la forme
+/// N × (Σ n²ᵢⱼ / (nᵢ. n.ⱼ) − 1). Les lignes ou colonnes vides sont ignorées.
+double chiSquareStatistic(List<List<double>> table) {
+  final rows = [for (final row in table) row.fold<double>(0, (a, b) => a + b)];
+  final cols = List<double>.filled(table.isEmpty ? 0 : table.first.length, 0);
+  for (final row in table) {
+    for (var j = 0; j < row.length; j++) {
+      cols[j] += row[j];
+    }
+  }
+  final total = rows.fold<double>(0, (a, b) => a + b);
+  if (total <= 0) return 0;
+  var sum = 0.0;
+  for (var i = 0; i < table.length; i++) {
+    if (rows[i] <= 0) continue;
+    for (var j = 0; j < cols.length; j++) {
+      final n = table[i][j];
+      if (n > 0 && cols[j] > 0) sum += n * n / (rows[i] * cols[j]);
+    }
+  }
+  return total * (sum - 1);
+}
+
+/// Valeur p du khi-deux par permutation : les occurrences sont redistribuées
+/// au hasard entre les colonnes, marges conservées, [rounds] fois. Valable
+/// quand les effectifs attendus sont trop faibles pour la loi du khi-deux.
+/// Graine fixe : le même tableau donne toujours la même valeur.
+double permutationPValue(
+  List<List<double>> table, {
+  int rounds = 999,
+  int seed = 20261116,
+}) {
+  final observed = chiSquareStatistic(table);
+  final rowOf = <int>[];
+  final colOf = <int>[];
+  for (var i = 0; i < table.length; i++) {
+    for (var j = 0; j < table[i].length; j++) {
+      for (var k = 0; k < table[i][j].round(); k++) {
+        rowOf.add(i);
+        colOf.add(j);
+      }
+    }
+  }
+  if (rowOf.isEmpty) return 1;
+  final random = math.Random(seed);
+  final colCount = table.first.length;
+  var atLeast = 0;
+  for (var round = 0; round < rounds; round++) {
+    // Mélange de Fisher-Yates des colonnes.
+    for (var k = colOf.length - 1; k > 0; k--) {
+      final m = random.nextInt(k + 1);
+      final tmp = colOf[k];
+      colOf[k] = colOf[m];
+      colOf[m] = tmp;
+    }
+    final shuffled = [
+      for (var i = 0; i < table.length; i++) List<double>.filled(colCount, 0),
+    ];
+    for (var k = 0; k < rowOf.length; k++) {
+      shuffled[rowOf[k]][colOf[k]] += 1;
+    }
+    // Petite tolérance : des tableaux égaux à l'arrondi près comptent.
+    if (chiSquareStatistic(shuffled) >= observed - 1e-9) atLeast++;
+  }
+  return (atLeast + 1) / (rounds + 1);
+}
+
 /// Probabilité qu'une variable du khi-deux à [degrees] degrés de liberté
 /// dépasse [statistic].
 double chiSquarePValue(double statistic, int degrees) {
@@ -337,6 +404,13 @@ int? elbowAxes(List<double> values) {
   return best + 1;
 }
 
+/// Règle de Cochran : au-delà de 20 % d'effectifs attendus inférieurs à 5,
+/// la loi du khi-deux ne vaut plus et l'on passe à la permutation.
+const _cochran = 0.2;
+
+double _pValue(Correspondence ca, List<List<double>> table) =>
+    ca.smallExpected > _cochran ? permutationPValue(table) : ca.pValue;
+
 /// Un mot placé sur la carte factorielle.
 class FactorWord {
   const FactorWord({
@@ -384,6 +458,7 @@ class FactorMap {
     this.degrees = 0,
     this.pValue = 1,
     this.smallExpected = 0,
+    this.permuted = false,
   });
 
   final List<FactorWord> words;
@@ -409,6 +484,10 @@ class FactorMap {
   final int degrees;
   final double pValue;
   final double smallExpected;
+
+  /// Vrai si la valeur p vient d'un test par permutation (effectifs trop
+  /// faibles pour la loi du khi-deux), faux si de la loi elle-même.
+  final bool permuted;
 
   /// Seuil de cos² sous lequel un mot est dit mal représenté.
   static const faintBelow = 0.3;
@@ -539,8 +618,9 @@ FactorMap? buildFactorMap(Analysis a, {int maxWords = 40}) {
     spectrum: [for (final v in ca.spectrum) v / ca.inertia],
     chi2: ca.chi2,
     degrees: ca.degrees,
-    pValue: ca.pValue,
+    pValue: _pValue(ca, table),
     smallExpected: ca.smallExpected,
+    permuted: ca.smallExpected > _cochran,
   );
 }
 
@@ -680,8 +760,9 @@ CorpusMap? buildCorpusMap(
       spectrum: [for (final v in ca.spectrum) v / ca.inertia],
       chi2: ca.chi2,
       degrees: ca.degrees,
-      pValue: ca.pValue,
+      pValue: _pValue(ca, table),
       smallExpected: ca.smallExpected,
+      permuted: ca.smallExpected > _cochran,
     ),
     documents: [
       for (var c = 0; c < kept.length; c++)

@@ -82,6 +82,25 @@ void main() {
       expect(ca.smallExpected, closeTo(0.35, 1e-12));
     });
 
+    test('khi-deux par permutation', () {
+      expect(chiSquareStatistic(smoking), closeTo(16.4416, 1e-3));
+      // Valeur de référence : 0,17 (loi du khi-deux et simulation de R).
+      expect(permutationPValue(smoking), inInclusiveRange(0.12, 0.23));
+      // Graine fixe : même tableau, même valeur.
+      expect(permutationPValue(smoking), permutationPValue(smoking));
+      // Structure très marquée : aucun tirage ne fait mieux.
+      const strong = [
+        [30.0, 1.0, 1.0],
+        [1.0, 30.0, 1.0],
+        [1.0, 1.0, 30.0],
+      ];
+      expect(permutationPValue(strong, rounds: 199), closeTo(1 / 200, 1e-12));
+      expect(chiSquareStatistic(const [
+        [2.0, 4.0],
+        [3.0, 6.0],
+      ]), closeTo(0, 1e-12));
+    });
+
     test('loi du khi-deux', () {
       expect(chiSquarePValue(3.841458820694124, 1), closeTo(0.05, 1e-9));
       expect(chiSquarePValue(100, 78), closeTo(0.04737, 1e-5));
@@ -172,6 +191,9 @@ void main() {
       expect(map.degrees, (map.words.length - 1) * (map.segments - 1));
       expect(map.chi2, greaterThan(0));
       expect(map.pValue, inInclusiveRange(0, 1));
+      // Tableau creux : valeur p par permutation.
+      expect(map.smallExpected, greaterThan(0.2));
+      expect(map.permuted, isTrue);
       // Mots mal représentés : triés, tous sous le seuil.
       final poor = map.poorlyShown;
       for (var i = 0; i < poor.length; i++) {
