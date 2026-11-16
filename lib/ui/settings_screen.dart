@@ -137,7 +137,10 @@ class SettingsScreen extends StatelessWidget {
               'réunis dans une même phrase, mesurés par l\'information '
               'mutuelle (log2 du rapport observé / attendu). Ces outils '
               'aident à explorer le matériau ; ils ne remplacent pas le '
-              'codage thématique du chercheur.',
+              'codage thématique du chercheur. Le codage, lui, est '
+              'entièrement le vôtre : l\'app ne propose aucun code. La '
+              'saturation compte, entretien après entretien, les codes '
+              'employés pour la première fois.',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium

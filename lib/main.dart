@@ -6,6 +6,7 @@ import 'services/settings.dart';
 import 'ui/app_scope.dart';
 import 'ui/home_screen.dart';
 import 'ui/theme.dart';
+import 'ui/welcome_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,7 @@ class SemantiqApp extends StatelessWidget {
         locale: const Locale('fr', 'FR'),
         supportedLocales: const [Locale('fr', 'FR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: const HomeScreen(),
+        home: settings.welcomed ? const HomeScreen() : const WelcomeScreen(),
       ),
     );
   }

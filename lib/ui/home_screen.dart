@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../data/interview.dart';
 import '../engine/export.dart';
-import '../sample_interview.dart';
 import '../sample_meeting.dart';
+import '../sample_study.dart';
 import 'app_scope.dart';
+import 'codebook_screen.dart';
 import 'common.dart';
 import 'editor_screen.dart';
 import 'illustrations.dart';
@@ -41,30 +42,41 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 22),
                         _Hero(items: items),
                         const SizedBox(height: 24),
-                        FadeSlideIn(
-                          delay: const Duration(milliseconds: 60),
-                          child: _RecordTile(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                  builder: (_) => const RecordScreen()),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
                         _ActionTiles(
                           onAudio: () => _importAudio(context),
                           onPaste: () => _pasteText(context),
                         ),
+                        const SizedBox(height: 12),
+                        FadeSlideIn(
+                          delay: const Duration(milliseconds: 200),
+                          child: _RecordTile(onTap: () => _record(context)),
+                        ),
+                        if (store.codes.isNotEmpty ||
+                            items.any((i) => !i.isMeeting)) ...[
+                          const SizedBox(height: 12),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 260),
+                            child: _CodebookTile(
+                              codes: store.codes.length,
+                              excerpts: store.codingCount,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        CodebookScreen(store: store)),
+                              ),
+                            ),
+                          ),
+                        ],
                         if (items.isEmpty) ...[
                           const SizedBox(height: 14),
                           FadeSlideIn(
                             delay: const Duration(milliseconds: 260),
                             child: _SampleTile(
-                              title: 'Essayer avec un entretien',
-                              subtitle: 'Un entretien fictif, prêt à analyser',
+                              title: "Ouvrir l'étude d'exemple",
+                              subtitle: 'Trois entretiens fictifs, déjà codés',
                               accent: Accent.mint,
-                              onTap: () => _openSample(context),
+                              onTap: () => _openSampleStudy(context),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -216,15 +228,23 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _openSample(BuildContext context) async {
+  /// Charge l'étude d'exemple, puis ouvre son livre de codes : c'est là
+  /// qu'on voit ce que l'app apporte.
+  Future<void> _openSampleStudy(BuildContext context) async {
     final store = AppScope.of(context).store;
-    final it = store.create(
-        title: 'Exemple – vécu du parcours de soins',
-        text: sampleInterview,
-        source: 'Exemple fourni avec l\'app');
+    if (!hasSampleStudy(store)) loadSampleStudy(store);
     await Navigator.push(
       context,
-      MaterialPageRoute<void>(builder: (_) => EditorScreen(interview: it)),
+      MaterialPageRoute<void>(builder: (_) => CodebookScreen(store: store)),
+    );
+  }
+
+  Future<void> _record(BuildContext context) async {
+    final kind = await _askKind(context);
+    if (kind == null || !context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => RecordScreen(kind: kind)),
     );
   }
 
@@ -312,8 +332,9 @@ class _Hero extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   items.isEmpty
-                      ? 'Entretiens et réunions : transcription, résumé, mots '
-                          'clés et liens entre les idées.'
+                      ? "De l'enregistrement aux thèmes : transcription, "
+                          'codage thématique et livre de codes. Tout reste '
+                          "sur l'iPhone."
                       : [
                           if (interviews > 0)
                             '$interviews entretien${interviews > 1 ? 's' : ''}',
@@ -358,7 +379,7 @@ class _ActionTiles extends StatelessWidget {
             delay: const Duration(milliseconds: 120),
             child: _ActionTile(
               title: 'Importer\nun audio',
-              subtitle: 'Mémo vocal, dictaphone',
+              subtitle: 'Mémo vocal',
               colors: const [Palette.coral, Color(0xFFFF9466)],
               art: TileArtKind.audio,
               onTap: onAudio,
@@ -452,6 +473,8 @@ class _ActionTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: fontFamily,
                 fontSize: 13,
@@ -510,7 +533,7 @@ class _RecordTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Enregistrer une réunion',
+                    'Enregistrer',
                     style: TextStyle(
                       fontFamily: displayFamily,
                       fontSize: 22,
@@ -520,7 +543,7 @@ class _RecordTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Compte rendu, décisions et actions',
+                    'Entretien ou réunion',
                     style: TextStyle(
                       fontFamily: fontFamily,
                       fontSize: 13,
@@ -532,6 +555,60 @@ class _RecordTile extends StatelessWidget {
               ),
             ),
             const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Accès au livre de codes du corpus.
+class _CodebookTile extends StatelessWidget {
+  const _CodebookTile({
+    required this.codes,
+    required this.excerpts,
+    required this.onTap,
+  });
+
+  final int codes;
+  final int excerpts;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tones = Tones.of(context);
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: tones.raised,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: tones.rule),
+        ),
+        child: Row(
+          children: [
+            const IconBadge(Icons.menu_book_rounded,
+                accent: Accent.violet, size: 52),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Livre de codes', style: t.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(
+                    codes == 0
+                        ? 'Codez vos entretiens, thème par thème'
+                        : '$codes code${codes > 1 ? 's' : ''} · $excerpts '
+                            'extrait${excerpts > 1 ? 's' : ''} · saturation',
+                    style: t.bodySmall?.copyWith(color: tones.muted),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded, color: tones.muted),
           ],
         ),
       ),

@@ -5,11 +5,15 @@ import 'package:semantiq/engine/analysis.dart';
 import 'package:semantiq/engine/meeting.dart';
 import 'package:semantiq/sample_interview.dart';
 import 'package:semantiq/sample_meeting.dart';
+import 'package:semantiq/sample_study.dart';
+import 'package:semantiq/ui/codebook_screen.dart';
+import 'package:semantiq/ui/coding_tab.dart';
 import 'package:semantiq/ui/illustrations.dart';
 import 'package:semantiq/ui/minutes_tab.dart';
 import 'package:semantiq/ui/network_view.dart';
 import 'package:semantiq/ui/results_tabs.dart';
 import 'package:semantiq/ui/theme.dart';
+import 'package:semantiq/ui/welcome_screen.dart';
 
 /// Vérifie que les écrans de résultats et les illustrations se construisent
 /// et se dessinent sans erreur de mise en page, en clair comme en sombre.
@@ -85,6 +89,46 @@ void main() {
       testWidgets('Texte', (tester) async {
         await pumpIn(tester, TextTab(analysis: analysis), brightness: b);
         expect(find.text('P1'), findsWidgets);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Codage', (tester) async {
+        final store = InterviewStore.memory();
+        loadSampleStudy(store);
+        final it =
+            store.items.firstWhere((i) => i.title.startsWith('Exemple 1'));
+        await pumpIn(
+          tester,
+          CodingTab(analysis: analyze(it.text), interview: it, store: store),
+          brightness: b,
+        );
+        expect(find.text('9 extraits codés · 7 codes'), findsOneWidget);
+        expect(find.text("Choc de l'annonce"), findsWidgets);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Livre de codes', (tester) async {
+        final store = InterviewStore.memory();
+        loadSampleStudy(store);
+        await pumpIn(tester, CodebookView(store: store), brightness: b);
+        expect(find.text('Saturation des données'), findsOneWidget);
+        expect(find.text('+7 nouveaux'), findsOneWidget);
+        expect(find.text('aucun nouveau'), findsOneWidget);
+        final list = find
+            .descendant(
+                of: find.byType(CodebookView), matching: find.byType(Scrollable))
+            .first;
+        await tester.scrollUntilVisible(
+            find.text('Rupture ville-hôpital'), 300,
+            scrollable: list);
+        await tester.pump(const Duration(milliseconds: 800));
+        expect(find.text('4 extraits · 3 entretiens'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('Présentation', (tester) async {
+        await pumpIn(tester, WelcomeView(onDone: (_) {}), brightness: b);
+        expect(find.text('Du verbatim aux thèmes'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
 
@@ -181,6 +225,66 @@ void main() {
       WordSheet(analysis: analysis, wordKey: key, onIgnore: (_) {}),
     );
     expect(find.text('Dans le texte'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Coder un extrait', (tester) async {
+    final store = InterviewStore.memory();
+    loadSampleStudy(store);
+    final it = store.items.firstWhere((i) => i.title.startsWith('Exemple 1'));
+    await pumpIn(tester,
+        CodingTab(analysis: analyze(it.text), interview: it, store: store));
+    // Première phrase de la personne interrogée, pas encore codée.
+    await tester.tap(find.text('Oui.'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Coder cet extrait'), findsOneWidget);
+    final pill = find.descendant(
+        of: find.byType(CodeSheet),
+        matching: find.text('Rupture ville-hôpital'));
+    expect(pill, findsOneWidget);
+
+    // Un code existant, puis un code créé sur place.
+    await tester.tap(pill);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(store.codesOf(it, 'Oui.').single.label, 'Rupture ville-hôpital');
+
+    await tester.enterText(find.byType(TextField), 'Acquiescement');
+    await tester.tap(find.byTooltip('Créer ce code et le poser'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(store.codes, hasLength(10));
+    expect(store.codesOf(it, 'Oui.').map((c) => c.label),
+        ['Rupture ville-hôpital', 'Acquiescement']);
+    expect(it.codings, hasLength(11));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Fiche d\'un code', (tester) async {
+    final store = InterviewStore.memory();
+    loadSampleStudy(store);
+    final code = store.codeByLabel('Information insuffisante')!;
+    await pumpIn(tester, CodeDetailSheet(store: store, codeId: code.id));
+    expect(find.text('Thème : Relation de soin'), findsOneWidget);
+    expect(find.text('P2'), findsNWidgets(2));
+    expect(find.text('Exemple 2 – Mme B., 58 ans'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Présentation : jusqu\'à l\'étude d\'exemple', (tester) async {
+    bool? sample;
+    await pumpIn(tester, WelcomeView(onDone: (s) => sample = s));
+    await tester.tap(find.text('Continuer'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text("Vos entretiens restent sur l'iPhone"), findsOneWidget);
+    await tester.tap(find.text('Continuer'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Vos codes, vos citations'), findsOneWidget);
+    await tester.tap(find.text("Ouvrir l'étude d'exemple"));
+    expect(sample, isTrue);
     expect(tester.takeException(), isNull);
   });
 

@@ -155,6 +155,10 @@ class Settings extends ChangeNotifier {
 
   Set<String> get globalStopwordSet => splitWords(globalStopwords);
 
+  /// Présentation de l'app déjà vue au premier lancement.
+  bool get welcomed => _prefs.getBool('welcomed') ?? false;
+  set welcomed(bool v) => _setBool('welcomed', v);
+
   /// Avertissement de confidentialité déjà accepté pour ce fournisseur.
   bool privacyAccepted(AiProvider p) =>
       _prefs.getBool('privacy_${p.name}') ?? false;

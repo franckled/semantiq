@@ -9,6 +9,7 @@ import '../engine/meeting.dart';
 import '../services/ai_summary.dart';
 import '../services/settings.dart';
 import 'app_scope.dart';
+import 'coding_tab.dart';
 import 'common.dart';
 import 'illustrations.dart';
 import 'minutes_tab.dart';
@@ -20,7 +21,8 @@ import 'theme.dart';
 Future<Analysis> _runAnalysis(String text, AnalysisOptions options) =>
     Isolate.run(() => analyze(text, options));
 
-/// Résultats de l'analyse d'un entretien, en cinq onglets.
+/// Résultats de l'analyse d'un entretien : six onglets, dont le codage
+/// thématique (cinq pour une réunion, où le compte rendu le remplace).
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key, required this.interview});
 
@@ -139,6 +141,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               interview: _it,
                               aiRunning: _aiRunning,
                               onGenerateAi: _generateAi,
+                            ),
+                          if (!_it.isMeeting)
+                            CodingTab(
+                              analysis: a,
+                              interview: _it,
+                              store: AppScope.of(context).store,
                             ),
                           KeySentencesTab(analysis: a, interview: _it),
                           WordsTab(
